@@ -307,7 +307,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             btnPickRandomMap = new XNAClientButton(WindowManager);
             btnPickRandomMap.Name = "btnPickRandomMap";
-            btnPickRandomMap.ClientRectangle = new Rectangle(btnLaunchGame.Right + 157 , btnLaunchGame.Y, 133, 23);
+            btnPickRandomMap.ClientRectangle = new Rectangle(btnLaunchGame.Right + 157, btnLaunchGame.Y, 133, 23);
             btnPickRandomMap.Text = "Pick Random Map";
             btnPickRandomMap.LeftClick += BtnPickRandomMap_LeftClick;
             btnPickRandomMap.Disable();
@@ -971,79 +971,146 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// <returns>An array of PlayerHouseInfos.</returns>
         protected virtual PlayerHouseInfo[] Randomize()
         {
+            Random rand = new Random();
+
+            int testCount = 10000;
+            System.Windows.Forms.MessageBox.Show("Test start, count=" + testCount);
+
             int totalPlayerCount = Players.Count + AIPlayers.Count;
-            PlayerHouseInfo[] houseInfos = new PlayerHouseInfo[totalPlayerCount];
+            var playerHouseResult = new List<PlayerHouseInfo[]>();
 
-            for (int i = 0; i < totalPlayerCount; i++)
-                houseInfos[i] = new PlayerHouseInfo();
-
-            // Gather list of spectators
-            for (int i = 0; i < Players.Count; i++)
-                houseInfos[i].IsSpectator = Players[i].SideId == GetSpectatorSideIndex();
-
-            // Gather list of available colors
-
-            List<int> freeColors = new List<int>();
-
-            for (int cId = 0; cId < MPColors.Count; cId++)
-                freeColors.Add(cId);
-
-            if (Map.CoopInfo != null)
+            for (int testLoop = 0; testLoop < testCount; testLoop++)
             {
-                foreach (int colorIndex in Map.CoopInfo.DisallowedPlayerColors)
-                    freeColors.Remove(colorIndex);
+                PlayerHouseInfo[] houseInfos = new PlayerHouseInfo[totalPlayerCount];
+                playerHouseResult.Add(houseInfos);
+
+                for (int i = 0; i < totalPlayerCount; i++)
+                    houseInfos[i] = new PlayerHouseInfo();
+
+                // Gather list of spectators
+                for (int i = 0; i < Players.Count; i++)
+                    houseInfos[i].IsSpectator = Players[i].SideId == GetSpectatorSideIndex();
+
+                // Gather list of available colors
+
+                List<int> freeColors = new List<int>();
+
+                for (int cId = 0; cId < MPColors.Count; cId++)
+                    freeColors.Add(cId);
+
+                if (Map.CoopInfo != null)
+                {
+                    foreach (int colorIndex in Map.CoopInfo.DisallowedPlayerColors)
+                        freeColors.Remove(colorIndex);
+                }
+
+                foreach (PlayerInfo player in Players)
+                    freeColors.Remove(player.ColorId - 1); // The first color is Random
+
+                foreach (PlayerInfo aiPlayer in AIPlayers)
+                    freeColors.Remove(aiPlayer.ColorId - 1);
+
+                // Gather list of available starting locations
+
+                List<int> freeStartingLocations = new List<int>();
+                List<int> takenStartingLocations = new List<int>();
+
+                for (int i = 0; i < Map.MaxPlayers; i++)
+                    freeStartingLocations.Add(i);
+
+                for (int i = 0; i < Players.Count; i++)
+                {
+                    if (!houseInfos[i].IsSpectator)
+                    {
+                        freeStartingLocations.Remove(Players[i].StartingLocation - 1);
+                        //takenStartingLocations.Add(Players[i].StartingLocation - 1);
+                        // ^ Gives everyone with a selected location a completely random
+                        // location in-game, because PlayerHouseInfo.RandomizeStart already
+                        // fills the list itself
+                    }
+                }
+
+                for (int i = 0; i < AIPlayers.Count; i++)
+                    freeStartingLocations.Remove(AIPlayers[i].StartingLocation - 1);
+
+                // Randomize options 
+
+                var seed = rand.Next();
+                {
+                    Random random = new Random(seed);
+
+                    for (int i = 0; i < totalPlayerCount; i++)
+                    {
+                        PlayerInfo pInfo;
+                        PlayerHouseInfo pHouseInfo = houseInfos[i];
+
+                        if (i < Players.Count)
+                            pInfo = Players[i];
+                        else
+                            pInfo = AIPlayers[i - Players.Count];
+
+                        pHouseInfo.RandomizeSide(pInfo, SideCount, random, GetDisallowedSides(), RandomSelectors, RandomSelectorCount);
+
+                        pHouseInfo.RandomizeColor(pInfo, freeColors, MPColors, random);
+                        pHouseInfo.RandomizeStart(pInfo, Map, freeStartingLocations, random, takenStartingLocations);
+                    }
+                }
+
             }
 
-            foreach (PlayerInfo player in Players)
-                freeColors.Remove(player.ColorId - 1); // The first color is Random
-
-            foreach (PlayerInfo aiPlayer in AIPlayers)
-                freeColors.Remove(aiPlayer.ColorId - 1);
-
-            // Gather list of available starting locations
-
-            List<int> freeStartingLocations = new List<int>();
-            List<int> takenStartingLocations = new List<int>();
-
-            for (int i = 0; i < Map.MaxPlayers; i++)
-                freeStartingLocations.Add(i);
-
-            for (int i = 0; i < Players.Count; i++)
+            System.Windows.Forms.MessageBox.Show("Test end");
             {
-                if (!houseInfos[i].IsSpectator)
+                var statPlayerHouseTimes = new int[totalPlayerCount, SideCount];
+
+                for (int testLoop = 0; testLoop < testCount; testLoop++)
                 {
-                    freeStartingLocations.Remove(Players[i].StartingLocation - 1);
-                    //takenStartingLocations.Add(Players[i].StartingLocation - 1);
-                    // ^ Gives everyone with a selected location a completely random
-                    // location in-game, because PlayerHouseInfo.RandomizeStart already
-                    // fills the list itself
+                    for (int i = 0; i < totalPlayerCount; i++)
+                    {
+                        statPlayerHouseTimes[i, playerHouseResult[testLoop][i].SideIndex]++;
+                    }
+                }
+                Logger.Log("test details:");
+                for (int i = 0; i < totalPlayerCount; i++)
+                {
+
+                    Logger.Log("---- player " + i + " ----");
+                    for (int j = 0; j < SideCount; j++)
+                        Logger.Log("house " + j + ":" + statPlayerHouseTimes[i, j].ToString());
+                    Logger.Log("--------");
                 }
             }
 
-            for (int i = 0; i < AIPlayers.Count; i++)
-                freeStartingLocations.Remove(AIPlayers[i].StartingLocation - 1);
-
-            // Randomize options
-
-            Random random = new Random(RandomSeed);
-
-            for (int i = 0; i < totalPlayerCount; i++)
             {
-                PlayerInfo pInfo;
-                PlayerHouseInfo pHouseInfo = houseInfos[i];
+                //MO only
+                var statSideDistribution = new int[5];
 
-                if (i < Players.Count)
-                    pInfo = Players[i];
-                else
-                    pInfo = AIPlayers[i - Players.Count];
+                for (int testLoop = 0; testLoop < testCount; testLoop++)
+                {
+                    var distribution = new int[4];
+                    for (int i = 0; i < totalPlayerCount; i++)
+                    {
+                        distribution[(playerHouseResult[testLoop][i].SideIndex) / 3]++;
+                    }
+                    int sideSum = 0;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (distribution[i] > 0)
+                        {
+                            sideSum++;
+                        }
+                    }
+                    statSideDistribution[sideSum]++;
+                }
 
-                pHouseInfo.RandomizeSide(pInfo, SideCount, random, GetDisallowedSides(), RandomSelectors, RandomSelectorCount);
 
-                pHouseInfo.RandomizeColor(pInfo, freeColors, MPColors, random);
-                pHouseInfo.RandomizeStart(pInfo, Map, freeStartingLocations, random, takenStartingLocations);
+                Logger.Log("test details:");
+
+                for (int i = 0; i < 5; i++) {
+                    Logger.Log(i.ToString()+" sides:" + statSideDistribution[i].ToString());
+                }
             }
 
-            return houseInfos;
+            throw new Exception("test end. refer to the log file for the result.");
         }
 
         /// <summary>
