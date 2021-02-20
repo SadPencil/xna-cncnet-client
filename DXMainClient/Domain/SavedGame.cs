@@ -33,6 +33,7 @@ namespace DTAClient.Domain
             var cf = new CompoundFile(file);
             var archiveNameBytes = cf.RootStorage.GetStream("Scenario Description").GetData();
             var archiveName = System.Text.Encoding.Unicode.GetString(archiveNameBytes);
+            archiveName = archiveName.TrimEnd(new char[] { '\0' });
             return archiveName;
         }
 
