@@ -5,6 +5,7 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -26,29 +27,43 @@ namespace ClientGUI
         /// instead of the window's name.
         /// </summary>
         protected string IniNameOverride { get; set; }
-
-        public T FindChild<T>(string childName, bool optional = false) where T : XNAControl
-        {
-            T child = FindChild<T>(Children, childName);
-            if (child == null && !optional)
-                throw new KeyNotFoundException("Could not find required child control: " + childName);
-
-            return child;
-        }
-
-        private T FindChild<T>(IEnumerable<XNAControl> list, string controlName) where T : XNAControl
+        private bool VisitChild(IEnumerable<XNAControl> list, Func<XNAControl, bool> judge)
         {
             foreach (XNAControl child in list)
             {
-                if (child.Name == controlName)
-                    return (T)child;
-
-                T childOfChild = FindChild<T>(child.Children, controlName);
-                if (childOfChild != null)
-                    return childOfChild;
+                bool stop = judge(child);
+                if (stop) return true;
+                stop = VisitChild(child.Children, judge);
+                if (stop) return true;
             }
+            return false;
+        }
 
-            return null;
+        public T FindChild<T>(string childName, bool optional = false) where T : XNAControl
+        {
+            XNAControl result = null;
+            VisitChild(new List<XNAControl>() { this }, control =>
+            {
+                if (control.Name != childName) return false;
+                result = control;
+                return true;
+            });
+            if (result == null && !optional)
+                throw new KeyNotFoundException("Could not find required child control: " + childName);
+            return (T)result;
+        }
+
+        public List<T> FindChildrenStartWith<T>(string prefix) where T : XNAControl
+        {
+            List<T> result = new List<T>();
+            VisitChild(new List<XNAControl>() { this }, (control) =>
+            {
+                if (string.IsNullOrEmpty(prefix) ||
+                !string.IsNullOrEmpty(control.Name) && control.Name.StartsWith(prefix))
+                    result.Add((T)control);
+                return false;
+            });
+            return result;
         }
 
         /// <summary>
@@ -74,7 +89,7 @@ namespace ClientGUI
                 return null; // IniNameOverride must be null, no need to continue
 
             iniFileName = Name;
-            
+
             // get theme specific path
             configIniPath = Path.Combine(ProgramConstants.GetResourcePath(), $"{iniFileName}.ini");
             if (File.Exists(configIniPath))
