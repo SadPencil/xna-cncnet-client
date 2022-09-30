@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using DTAClient.Domain;
 using System.IO;
 using ClientGUI;
@@ -57,6 +58,29 @@ namespace DTAClient.DXGUI.Generic
 
         private Mission missionToLaunch;
 
+        /// <summary>
+        /// Show missons with selected tags.
+        /// </summary>
+        /// <param name="selectedTags">Missions with at lease one of which tags to be shown. As an exception, null means show all missions.</param>
+        public void ParseMissionWithFilter(ISet<string> selectedTags = null)
+        {
+            Missions.Clear();
+
+            lbCampaignList.IsChangingSize = true;
+
+            lbCampaignList.Items.Clear();
+            lbCampaignList.SelectedIndex = -1;
+            // The following two operations are handled by LbCampaignList_SelectedIndexChanged
+            // tbMissionDescription.Text = string.Empty;
+            // btnLaunch.AllowClick = false;
+
+            ParseBattleIni("INI/Battle.ini", selectedTags);
+            ParseBattleIni("INI/" + ClientConfiguration.Instance.BattleFSFileName, selectedTags);
+
+            lbCampaignList.IsChangingSize = false;
+
+            lbCampaignList.TopIndex = 0; // reset the scroll bar
+        }
         public override void Initialize()
         {
             BackgroundTexture = AssetLoader.LoadTexture("missionselectorbg.png");
@@ -178,8 +202,7 @@ namespace DTAClient.DXGUI.Generic
 
             trbDifficultySelector.Value = UserINISettings.Instance.Difficulty;
 
-            ParseBattleIni("INI/Battle.ini");
-            ParseBattleIni("INI/" + ClientConfiguration.Instance.BattleFSFileName);
+            ParseMissionWithFilter(null);
 
             cheaterWindow = new CheaterWindow(WindowManager);
             DarkeningPanel dp = new DarkeningPanel(WindowManager);
@@ -222,7 +245,7 @@ namespace DTAClient.DXGUI.Generic
 
         private void BtnCancel_LeftClick(object sender, EventArgs e)
         {
-            Enabled = false;
+            Disable();
         }
 
         private void BtnLaunch_LeftClick(object sender, EventArgs e)
@@ -315,7 +338,7 @@ namespace DTAClient.DXGUI.Generic
             UserINISettings.Instance.Difficulty.Value = trbDifficultySelector.Value;
             UserINISettings.Instance.SaveSettings();
 
-            ((MainMenuDarkeningPanel)Parent).Hide();
+            Disable();
 
             discordHandler?.UpdatePresence(mission.GUIName, difficultyName, mission.IconPath, true);
             GameProcessLogic.GameProcessExited += GameProcessExited_Callback;
@@ -342,8 +365,9 @@ namespace DTAClient.DXGUI.Generic
         /// Parses a Battle(E).ini file. Returns true if succesful (file found), otherwise false.
         /// </summary>
         /// <param name="path">The path of the file, relative to the game directory.</param>
+        /// <param name="selectedTags">Missions with at lease one of which tags to be shown. As an exception, null means show all missions.</param>
         /// <returns>True if succesful, otherwise false.</returns>
-        private bool ParseBattleIni(string path)
+        private bool ParseBattleIni(string path, ISet<string> selectedTags = null)
         {
             Logger.Log("Attempting to parse " + path + " to populate mission list.");
 
@@ -370,8 +394,6 @@ namespace DTAClient.DXGUI.Generic
 
                 var mission = new Mission(battleIni, battleSection);
 
-                Missions.Add(mission);
-
                 XNAListBoxItem item = new XNAListBoxItem();
                 item.Text = mission.GUIName;
                 if (!mission.Enabled)
@@ -393,7 +415,11 @@ namespace DTAClient.DXGUI.Generic
                 if (!string.IsNullOrEmpty(mission.IconPath))
                     item.Texture = AssetLoader.LoadTexture(mission.IconPath + "icon.png");
 
-                lbCampaignList.AddItem(item);
+                if (selectedTags == null || mission.Tags.Intersect(selectedTags).Count() >= 1)
+                {
+                    Missions.Add(mission);
+                    lbCampaignList.AddItem(item);
+                }
             }
 
             Logger.Log("Finished parsing " + path + ".");

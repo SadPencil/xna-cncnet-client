@@ -39,6 +39,7 @@ namespace DTAClient.DXGUI.Generic
         public MainMenu(WindowManager windowManager, SkirmishLobby skirmishLobby,
             LANLobby lanLobby, TopBar topBar, OptionsWindow optionsWindow,
             CnCNetLobby cncnetLobby,
+            CampaignTagSelector campaignTagSelector,
             CnCNetManager connectionManager, DiscordHandler discordHandler) : base(windowManager)
         {
             this.skirmishLobby = skirmishLobby;
@@ -47,6 +48,7 @@ namespace DTAClient.DXGUI.Generic
             this.connectionManager = connectionManager;
             this.optionsWindow = optionsWindow;
             this.cncnetLobby = cncnetLobby;
+            this.campaignTagSelector = campaignTagSelector;
             this.discordHandler = discordHandler;
             cncnetLobby.UpdateCheck += CncnetLobby_UpdateCheck;
             isMediaPlayerAvailable = IsMediaPlayerAvailable();
@@ -61,6 +63,8 @@ namespace DTAClient.DXGUI.Generic
         private CnCNetLobby cncnetLobby;
 
         private SkirmishLobby skirmishLobby;
+
+        private CampaignTagSelector campaignTagSelector;
 
         private LANLobby lanLobby;
 
@@ -783,7 +787,7 @@ namespace DTAClient.DXGUI.Generic
             => optionsWindow.Open();
 
         private void BtnNewCampaign_LeftClick(object sender, EventArgs e)
-            => innerPanel.Show(innerPanel.CampaignSelector);
+            => campaignTagSelector.Open();
 
         private void BtnLoadGame_LeftClick(object sender, EventArgs e)
             => innerPanel.Show(innerPanel.GameLoadingWindow);

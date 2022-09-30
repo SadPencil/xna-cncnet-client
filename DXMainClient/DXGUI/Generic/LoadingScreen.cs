@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 using Rampastring.Tools;
 using ClientUpdater;
 using SkirmishLobby = DTAClient.DXGUI.Multiplayer.GameLobby.SkirmishLobby;
+using System.Collections.Generic;
+using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Generic
 {
@@ -131,21 +133,22 @@ namespace DTAClient.DXGUI.Generic
 
             topBar.SetSecondarySwitch(cncnetLobby);
 
+            var campaignTagSelector = new CampaignTagSelector(WindowManager, nameof(CampaignTagSelector), discordHandler);
+
             var mainMenu = new MainMenu(WindowManager, skirmishLobby, lanLobby,
-                topBar, optionsWindow, cncnetLobby, cncnetManager, discordHandler);
+                topBar, optionsWindow, cncnetLobby, campaignTagSelector, cncnetManager, discordHandler);
             WindowManager.AddAndInitializeControl(mainMenu);
 
-            DarkeningPanel.AddAndInitializeWithControl(WindowManager, skirmishLobby);
+            List<XNAControl> controlsToBeInitialized = new List<XNAControl>()
+            {
+                skirmishLobby, cncnetGameLoadingLobby, cncnetGameLobby, cncnetLobby, lanLobby, optionsWindow, campaignTagSelector,
+            };
 
-            DarkeningPanel.AddAndInitializeWithControl(WindowManager, cncnetGameLoadingLobby);
-
-            DarkeningPanel.AddAndInitializeWithControl(WindowManager, cncnetGameLobby);
-
-            DarkeningPanel.AddAndInitializeWithControl(WindowManager, cncnetLobby);
-
-            DarkeningPanel.AddAndInitializeWithControl(WindowManager, lanLobby);
-
-            DarkeningPanel.AddAndInitializeWithControl(WindowManager, optionsWindow);
+            foreach (var control in controlsToBeInitialized)
+            {
+                DarkeningPanel.AddAndInitializeWithControl(WindowManager, control);
+                control.Disable();
+            }
 
             WindowManager.AddAndInitializeControl(privateMessagingPanel);
             privateMessagingPanel.AddChild(pmWindow);
@@ -154,13 +157,7 @@ namespace DTAClient.DXGUI.Generic
             topBar.SetOptionsWindow(optionsWindow);
 
             WindowManager.AddAndInitializeControl(gipw);
-            skirmishLobby.Disable();
-            cncnetLobby.Disable();
-            cncnetGameLobby.Disable();
-            cncnetGameLoadingLobby.Disable();
-            lanLobby.Disable();
             pmWindow.Disable();
-            optionsWindow.Disable();
 
             WindowManager.AddAndInitializeControl(topBar);
             topBar.AddPrimarySwitchable(mainMenu);
