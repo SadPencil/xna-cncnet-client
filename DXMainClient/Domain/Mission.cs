@@ -9,8 +9,9 @@ namespace DTAClient.Domain
     /// </summary>
     public class Mission
     {
-        public Mission(IniFile iniFile, string sectionName)
+        public Mission(IniFile iniFile, string sectionName, int index)
         {
+            Index = index;
             CD = iniFile.GetIntValue(sectionName, nameof(CD), 0);
             Side = iniFile.GetIntValue(sectionName, nameof(Side), 0);
             Scenario = iniFile.GetStringValue(sectionName, nameof(Scenario), string.Empty);
@@ -26,6 +27,7 @@ namespace DTAClient.Domain
             GUIDescription = GUIDescription.Replace("@", Environment.NewLine);
         }
 
+        public int Index { get; }
         public int CD { get; }
         public int Side { get; }
         public string Scenario { get; }
