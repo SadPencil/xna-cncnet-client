@@ -48,7 +48,7 @@ namespace DTAClient.DXGUI.Generic
             btnShowAllMission = FindChild<XNAClientButton>(nameof(btnShowAllMission));
             btnShowAllMission.LeftClick += (sender, e) =>
             {
-                CampaignSelector.ParseMissionWithFilter(null);
+                CampaignSelector.LoadMissionsWithFilter(null);
                 CampaignSelector.Enable();
                 Disable();
             };
@@ -60,7 +60,7 @@ namespace DTAClient.DXGUI.Generic
                 string tagName = tagButton.Name.Substring(TagButtonsPrefix.Length);
                 tagButton.LeftClick += (sender, e) =>
                 {
-                    CampaignSelector.ParseMissionWithFilter(new HashSet<string>() { tagName });
+                    CampaignSelector.LoadMissionsWithFilter(new HashSet<string>() { tagName });
                     CampaignSelector.Enable();
                     Disable();
                 };

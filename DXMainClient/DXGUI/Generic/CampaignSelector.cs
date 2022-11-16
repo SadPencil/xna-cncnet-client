@@ -1,16 +1,17 @@
-﻿using ClientCore;
-using Microsoft.Xna.Framework;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using DTAClient.Domain;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using ClientCore;
 using ClientGUI;
-using Rampastring.XNAUI.XNAControls;
-using Rampastring.XNAUI;
-using Rampastring.Tools;
 using ClientUpdater;
+using DTAClient.Domain;
 using Localization;
+using Microsoft.Xna.Framework;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Generic
 {
@@ -35,7 +36,8 @@ namespace DTAClient.DXGUI.Generic
 
         private DiscordHandler discordHandler;
 
-        private List<Mission> Missions = new List<Mission>();
+        private List<Mission> allMissions = new List<Mission>();
+        private List<Mission> lbCampaignListMissions;
         private XNAListBox lbCampaignList;
         private XNAClientButton btnLaunch;
         private XNATextBlock tbMissionDescription;
@@ -58,31 +60,6 @@ namespace DTAClient.DXGUI.Generic
 
         private Mission missionToLaunch;
 
-        /// <summary>
-        /// Show missons with selected tags.
-        /// </summary>
-        /// <param name="selectedTags">Missions with at lease one of which tags to be shown. As an exception, null means show all missions.</param>
-        public void ParseMissionWithFilter(ISet<string> selectedTags = null)
-        {
-            Missions.Clear();
-
-            lbCampaignList.IsChangingSize = true;
-
-            lbCampaignList.Items.Clear();
-            lbCampaignList.SelectedIndex = -1;
-            // The following two operations are handled by LbCampaignList_SelectedIndexChanged
-            // tbMissionDescription.Text = string.Empty;
-            // btnLaunch.AllowClick = false;
-
-            ParseBattleIni("INI/Battle.ini", selectedTags);
-            
-            if (Missions.Count == 0)
-                ParseBattleIni("INI/" + ClientConfiguration.Instance.BattleFSFileName, selectedTags);
-
-            lbCampaignList.IsChangingSize = false;
-
-            lbCampaignList.TopIndex = 0; // reset the scroll bar
-        }
         public override void Initialize()
         {
             BackgroundTexture = AssetLoader.LoadTexture("missionselectorbg.png");
@@ -204,7 +181,7 @@ namespace DTAClient.DXGUI.Generic
 
             trbDifficultySelector.Value = UserINISettings.Instance.Difficulty;
 
-            ParseMissionWithFilter(null);
+            ReadMissionList();
 
             cheaterWindow = new CheaterWindow(WindowManager);
             var dp = new DarkeningPanel(WindowManager);
@@ -225,7 +202,7 @@ namespace DTAClient.DXGUI.Generic
                 return;
             }
 
-            Mission mission = Missions[lbCampaignList.SelectedIndex];
+            Mission mission = lbCampaignListMissions[lbCampaignList.SelectedIndex];
 
             if (string.IsNullOrEmpty(mission.Scenario))
             {
@@ -254,7 +231,7 @@ namespace DTAClient.DXGUI.Generic
         {
             int selectedMissionId = lbCampaignList.SelectedIndex;
 
-            Mission mission = Missions[selectedMissionId];
+            Mission mission = lbCampaignListMissions[selectedMissionId];
 
             if (!ClientConfiguration.Instance.ModMode &&
                 (!Updater.IsFileNonexistantOrOriginal(mission.Scenario) || AreFilesModified()))
@@ -363,44 +340,31 @@ namespace DTAClient.DXGUI.Generic
         }
 
         /// <summary>
-        /// Parses a Battle(E).ini file. Returns true if succesful (file found), otherwise false.
+        /// Load or re-load missons with selected tags.
         /// </summary>
-        /// <param name="path">The path of the file, relative to the game directory.</param>
         /// <param name="selectedTags">Missions with at lease one of which tags to be shown. As an exception, null means show all missions.</param>
-        /// <returns>True if succesful, otherwise false.</returns>
-        private bool ParseBattleIni(string path, ISet<string> selectedTags = null)
+        public void LoadMissionsWithFilter(ISet<string> selectedTags)
         {
-            Logger.Log("Attempting to parse " + path + " to populate mission list.");
+            lbCampaignListMissions.Clear();
 
-            FileInfo battleIniFileInfo = SafePath.GetFile(ProgramConstants.GamePath, path);
-            if (!battleIniFileInfo.Exists)
+            lbCampaignList.IsChangingSize = true;
+
+            lbCampaignList.Clear();
+            lbCampaignList.SelectedIndex = -1;
+
+            // The following two lines are handled by LbCampaignList_SelectedIndexChanged
+            // tbMissionDescription.Text = string.Empty;
+            // btnLaunch.AllowClick = false;
+
+            // Select missions with the filter
+            if (selectedTags != null)
+                lbCampaignListMissions = allMissions.Where(mission => mission.Tags.Intersect(selectedTags).Any()).ToList();
+            else
+                lbCampaignListMissions = allMissions.ToList();
+
+            // Update lbCampaignList with selected missions
+            foreach (Mission mission in lbCampaignListMissions)
             {
-                Logger.Log("File " + path + " not found. Ignoring.");
-                return false;
-            }
-
-            if (Missions.Count > 0)
-            {
-                throw new InvalidOperationException("Loading multiple Battle*.ini files is not supported anymore.");
-            }
-
-            var battleIni = new IniFile(battleIniFileInfo.FullName);
-
-            List<string> battleKeys = battleIni.GetSectionKeys("Battles");
-
-            if (battleKeys == null)
-                return false; // File exists but [Battles] doesn't
-
-            for (int i = 0; i < battleKeys.Count; i++)
-            {
-                string battleEntry = battleKeys[i];
-                string battleSection = battleIni.GetStringValue("Battles", battleEntry, "NOT FOUND");
-
-                if (!battleIni.SectionExists(battleSection))
-                    continue;
-
-                var mission = new Mission(battleIni, battleSection, i);
-
                 var item = new XNAListBoxItem();
                 item.Text = mission.GUIName;
                 if (!mission.Enabled)
@@ -422,12 +386,63 @@ namespace DTAClient.DXGUI.Generic
                 if (!string.IsNullOrEmpty(mission.IconPath))
                     item.Texture = AssetLoader.LoadTexture(mission.IconPath + "icon.png");
 
-                if (selectedTags == null || mission.Tags.Intersect(selectedTags).Count() >= 1)
-                {
-                    Missions.Add(mission);
-                    lbCampaignList.AddItem(item);
-                }
+                lbCampaignList.AddItem(item);
             }
+
+            lbCampaignList.IsChangingSize = false;
+
+            lbCampaignList.TopIndex = 0; // reset the scroll bar
+        }
+
+        private void ReadMissionList()
+        {
+            ParseBattleIni("INI/Battle.ini");
+
+            if (Missions.Count == 0)
+                ParseBattleIni("INI/" + ClientConfiguration.Instance.BattleFSFileName);
+        }
+
+        /// <summary>
+        /// Parses a Battle(E).ini file. Returns true if succesful (file found), otherwise false.
+        /// </summary>
+        /// <param name="path">The path of the file, relative to the game directory.</param>
+        /// <returns>True if succesful, otherwise false.</returns>
+        private bool ParseBattleIni(string path)
+        {
+            Logger.Log("Attempting to parse " + path + " to populate mission list.");
+
+            FileInfo battleIniFileInfo = SafePath.GetFile(ProgramConstants.GamePath, path);
+            if (!battleIniFileInfo.Exists)
+            {
+                Logger.Log("File " + path + " not found. Ignoring.");
+                return false;
+            }
+
+            if (lbCampaignListMissions.Count > 0)
+            {
+                throw new InvalidOperationException("Loading multiple Battle*.ini files is not supported anymore.");
+            }
+
+            var battleIni = new IniFile(battleIniFileInfo.FullName);
+
+            List<string> battleKeys = battleIni.GetSectionKeys("Battles");
+
+            if (battleKeys == null)
+                return false; // File exists but [Battles] doesn't
+
+            for (int i = 0; i < battleKeys.Count; i++)
+            {
+                string battleEntry = battleKeys[i];
+                string battleSection = battleIni.GetStringValue("Battles", battleEntry, "NOT FOUND");
+
+                if (!battleIni.SectionExists(battleSection))
+                    continue;
+
+                var mission = new Mission(battleIni, battleSection, i);
+                allMissions.Add(mission);
+            }
+
+            LoadMissionsWithFilter(null);
 
             Logger.Log("Finished parsing " + path + ".");
             return true;
