@@ -398,7 +398,7 @@ namespace DTAClient.DXGUI.Generic
         {
             ParseBattleIni("INI/Battle.ini");
 
-            if (Missions.Count == 0)
+            if (allMissions.Count == 0)
                 ParseBattleIni("INI/" + ClientConfiguration.Instance.BattleFSFileName);
         }
 
