@@ -320,6 +320,8 @@ namespace DTAClient.DXGUI
 
             bool borderlessWindowedClient = UserINISettings.Instance.BorderlessWindowedClient;
 
+            bool integerScale = UserINISettings.Instance.IntegerScaledClient;
+
             (int desktopWidth, int desktopHeight) = ScreenResolution.SafeMaximumResolution;
 
             if (desktopWidth >= windowWidth && desktopHeight >= windowHeight)
@@ -340,22 +342,32 @@ namespace DTAClient.DXGUI
 
             int initialXRes = Math.Max(windowWidth, clientConfiguration.MinimumRenderWidth);
             initialXRes = Math.Min(initialXRes, clientConfiguration.MaximumRenderWidth);
+            if (integerScale)
+                initialXRes = Math.Min(initialXRes, clientConfiguration.PreferedRenderWidth);
 
             int initialYRes = Math.Max(windowHeight, clientConfiguration.MinimumRenderHeight);
             initialYRes = Math.Min(initialYRes, clientConfiguration.MaximumRenderHeight);
+            if (integerScale)
+                initialYRes = Math.Min(initialYRes, clientConfiguration.PreferedRenderHeight);
 
             double xRatio = (windowWidth) / (double)initialXRes;
             double yRatio = (windowHeight) / (double)initialYRes;
 
             double ratio = xRatio > yRatio ? yRatio : xRatio;
 
-            if ((windowWidth == 1366 || windowWidth == 1360) && windowHeight == 768)
+            if (!integerScale && 720 <= clientConfiguration.MaximumRenderHeight && clientConfiguration.MaximumRenderHeight < 768)
             {
-                renderResolutionX = windowWidth;
-                renderResolutionY = windowHeight;
+                // Most client interface has been designed for 1280x720 or 1280x800.
+                // 1280x720 upscaled to 1366x768 doesn't look great, so we allow players with 1366x768 to use their native resolution with small black bars on the sides
+                // This behavior is enforced even if IntegerScaledClient is turned off.
+                if ((windowWidth == 1366 || windowWidth == 1360) && windowHeight == 768)
+                {
+                    renderResolutionX = windowWidth;
+                    renderResolutionY = windowHeight;
+                }
             }
 
-            if (ratio > 1.0)
+            if (!integerScale && ratio > 1.0)
             {
                 // Check whether we could sharp-scale our client window
                 for (int i = 2; i <= ScreenResolution.MAX_INT_SCALE; i++)
@@ -405,7 +417,7 @@ namespace DTAClient.DXGUI
 
 #endif
             wm.CenterOnScreen();
-            wm.SetRenderResolution(renderResolutionX, renderResolutionY);
+            wm.SetRenderResolution(renderResolutionX, renderResolutionY, true);
         }
     }
 
