@@ -349,6 +349,8 @@ namespace DTAClient.DXGUI
 
             double ratio = xRatio > yRatio ? yRatio : xRatio;
 
+            // Most client interface has been designed for 1280x720 or 1280x800.
+            // 1280x720 upscaled to 1366x768 doesn't look great, so we allow players with 1366x768 to use their native resolution with small black bars on the sides 
             if ((windowWidth == 1366 || windowWidth == 1360) && windowHeight == 768)
             {
                 renderResolutionX = windowWidth;
