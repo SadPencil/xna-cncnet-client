@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Rampastring.XNAUI.WindowsGL.Debug</id>
+    <version>2.3.21-private-intscale-061a412</version>
+    <title>Rampastring.XNAUI (WindowsGL Debug Build)</title>
+    <authors>Rampastring.XNAUI.WindowsGL.Debug</authors>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/Rampastring/Rampastring.XNAUI</projectUrl>
+    <description>Rampastring XNA/MonoGame UI Library</description>
+    <copyright>Copyright © Rami 'Rampastring' Pasanen 2016-2022</copyright>
+    <repository type="git" url="https://github.com/SadPencil/Rampastring.XNAUI.git" commit="061a412945a8f68d8527270712741668e68c0f7a" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.8">
+        <dependency id="MonoGame.Framework.DesktopGL" version="3.8.0.1641" exclude="Build,Analyzers" />
+        <dependency id="Rampastring.Tools" version="2.0.6" exclude="Build,Analyzers" />
+        <dependency id="SixLabors.ImageSharp" version="2.1.7" exclude="Build,Analyzers" />
+        <dependency id="TextCopy" version="6.2.1" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net8.0-windows7.0">
+        <dependency id="MonoGame.Framework.DesktopGL" version="3.8.1.303" exclude="Build,Analyzers" />
+        <dependency id="Rampastring.Tools" version="2.0.6" exclude="Build,Analyzers" />
+        <dependency id="SixLabors.ImageSharp" version="2.1.7" exclude="Build,Analyzers" />
+        <dependency id="TextCopy" version="6.2.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+    <frameworkReferences>
+      <group targetFramework="net8.0-windows7.0">
+        <frameworkReference name="Microsoft.WindowsDesktop.App.WindowsForms" />
+      </group>
+      <group targetFramework=".NETFramework4.8" />
+    </frameworkReferences>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.Runtime.InteropServices.RuntimeInformation" targetFramework=".NETFramework4.8" />
+    </frameworkAssemblies>
+  </metadata>
+  <files>
+    <file src="D:\SadPencil\Documents\GitHub\Rampastring.XNAUI\bin\WindowsGLDebug\net48\Rampastring.XNAUI.WindowsGL.Debug.pdb" target="lib\net48\Rampastring.XNAUI.WindowsGL.Debug.pdb" />
+    <file src="D:\SadPencil\Documents\GitHub\Rampastring.XNAUI\bin\WindowsGLDebug\net8.0-windows\Rampastring.XNAUI.WindowsGL.Debug.pdb" target="lib\net8.0-windows7.0\Rampastring.XNAUI.WindowsGL.Debug.pdb" />
+  </files>
+</package>
