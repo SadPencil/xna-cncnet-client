@@ -340,60 +340,74 @@ namespace DTAClient.DXGUI
             int renderResolutionX = 0;
             int renderResolutionY = 0;
 
-            int initialXRes = Math.Max(windowWidth, clientConfiguration.MinimumRenderWidth);
-            initialXRes = Math.Min(initialXRes, clientConfiguration.MaximumRenderWidth);
-            if (integerScale)
-                initialXRes = Math.Min(initialXRes, clientConfiguration.PreferedRenderWidth);
-
-            int initialYRes = Math.Max(windowHeight, clientConfiguration.MinimumRenderHeight);
-            initialYRes = Math.Min(initialYRes, clientConfiguration.MaximumRenderHeight);
-            if (integerScale)
-                initialYRes = Math.Min(initialYRes, clientConfiguration.PreferedRenderHeight);
-
-            double xRatio = (windowWidth) / (double)initialXRes;
-            double yRatio = (windowHeight) / (double)initialYRes;
-
-            double ratio = xRatio > yRatio ? yRatio : xRatio;
-
-            if (!integerScale && 720 <= clientConfiguration.MaximumRenderHeight && clientConfiguration.MaximumRenderHeight < 768)
+            if (!integerScale)
             {
-                // Most client interface has been designed for 1280x720 or 1280x800.
-                // 1280x720 upscaled to 1366x768 doesn't look great, so we allow players with 1366x768 to use their native resolution with small black bars on the sides
-                // This behavior is enforced even if IntegerScaledClient is turned off.
-                if ((windowWidth == 1366 || windowWidth == 1360) && windowHeight == 768)
-                {
-                    renderResolutionX = windowWidth;
-                    renderResolutionY = windowHeight;
-                }
-            }
+                int initialXRes = Math.Max(windowWidth, clientConfiguration.MinimumRenderWidth);
+                initialXRes = Math.Min(initialXRes, clientConfiguration.MaximumRenderWidth);
 
-            if (!integerScale && ratio > 1.0)
-            {
-                // Check whether we could sharp-scale our client window
-                for (int i = 2; i <= ScreenResolution.MAX_INT_SCALE; i++)
-                {
-                    int sharpScaleRenderResX = windowWidth / i;
-                    int sharpScaleRenderResY = windowHeight / i;
+                int initialYRes = Math.Max(windowHeight, clientConfiguration.MinimumRenderHeight);
+                initialYRes = Math.Min(initialYRes, clientConfiguration.MaximumRenderHeight);
 
-                    if (sharpScaleRenderResX >= clientConfiguration.MinimumRenderWidth &&
-                        sharpScaleRenderResX <= clientConfiguration.MaximumRenderWidth &&
-                        sharpScaleRenderResY >= clientConfiguration.MinimumRenderHeight &&
-                        sharpScaleRenderResY <= clientConfiguration.MaximumRenderHeight)
+                double xRatio = (windowWidth) / (double)initialXRes;
+                double yRatio = (windowHeight) / (double)initialYRes;
+
+                double ratio = xRatio > yRatio ? yRatio : xRatio;
+
+                if (720 <= clientConfiguration.MaximumRenderHeight && clientConfiguration.MaximumRenderHeight < 768)
+                {
+                    // Most client interface has been designed for 1280x720 or 1280x800.
+                    // 1280x720 upscaled to 1366x768 doesn't look great, so we allow players with 1366x768 to use their native resolution with small black bars on the sides
+                    // This behavior is enforced even if IntegerScaledClient is turned off.
+                    if ((windowWidth == 1366 || windowWidth == 1360) && windowHeight == 768)
                     {
-                        renderResolutionX = sharpScaleRenderResX;
-                        renderResolutionY = sharpScaleRenderResY;
-                        break;
+                        renderResolutionX = windowWidth;
+                        renderResolutionY = windowHeight;
                     }
                 }
+
+                if (ratio > 1.0)
+                {
+                    // Check whether we could sharp-scale our client window
+                    for (int i = 2; i <= ScreenResolution.MAX_INT_SCALE; i++)
+                    {
+                        int sharpScaleRenderResX = windowWidth / i;
+                        int sharpScaleRenderResY = windowHeight / i;
+
+                        if (sharpScaleRenderResX >= clientConfiguration.MinimumRenderWidth &&
+                            sharpScaleRenderResX <= clientConfiguration.MaximumRenderWidth &&
+                            sharpScaleRenderResY >= clientConfiguration.MinimumRenderHeight &&
+                            sharpScaleRenderResY <= clientConfiguration.MaximumRenderHeight)
+                        {
+                            renderResolutionX = sharpScaleRenderResX;
+                            renderResolutionY = sharpScaleRenderResY;
+                            break;
+                        }
+                    }
+                }
+
+                if (renderResolutionX == 0 || renderResolutionY == 0)
+                {
+                    renderResolutionX = initialXRes;
+                    renderResolutionY = initialYRes;
+
+                    if (ratio == xRatio)
+                        renderResolutionY = (int)(windowHeight / ratio);
+                }
             }
-
-            if (renderResolutionX == 0 || renderResolutionY == 0)
+            else
             {
-                renderResolutionX = initialXRes;
-                renderResolutionY = initialYRes;
+                // Compute integer scale ratio using minimum render resolution
+                // Note: this means we prefer larger scale ratio than render resolution.
+                // This policy works best when maximum and minimum render resolution are close.
+                int xScale = windowWidth / clientConfiguration.MinimumRenderWidth;
+                int yScale = windowHeight / clientConfiguration.MinimumRenderHeight;
+                int scale = Math.Min(xScale, yScale);
 
-                if (ratio == xRatio)
-                    renderResolutionY = (int)(windowHeight / ratio);
+                // Compute render resolution
+                renderResolutionX = Math.Min(clientConfiguration.MaximumRenderWidth,
+                    clientConfiguration.MinimumRenderWidth + (windowWidth - clientConfiguration.MinimumRenderWidth * scale) / scale);
+                renderResolutionY = Math.Min(clientConfiguration.MaximumRenderHeight,
+                    clientConfiguration.MinimumRenderHeight + (windowHeight - clientConfiguration.MinimumRenderHeight * scale) / scale);
             }
 
             wm.SetBorderlessMode(borderlessWindowedClient);
@@ -417,7 +431,9 @@ namespace DTAClient.DXGUI
 
 #endif
             wm.CenterOnScreen();
-            wm.SetRenderResolution(renderResolutionX, renderResolutionY, true);
+
+            Logger.Log("Setting render resolution to " + renderResolutionX + "x" + renderResolutionY + ". Integer scaling: " + integerScale);
+            wm.SetRenderResolution(renderResolutionX, renderResolutionY, integerScale);
         }
     }
 

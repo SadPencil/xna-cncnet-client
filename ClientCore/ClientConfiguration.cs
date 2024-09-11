@@ -194,11 +194,8 @@ namespace ClientCore
 
         public int MaximumRenderHeight => clientDefinitionsIni.GetIntValue(SETTINGS, "MaximumRenderHeight", 800);
 
-        public int PreferedRenderWidth => clientDefinitionsIni.GetIntValue(SETTINGS, "PreferedRenderWidth", 1280);
-
-        public int PreferedRenderHeight => clientDefinitionsIni.GetIntValue(SETTINGS, "PreferedRenderHeight", 800);
-
-        public string[] RecommendedResolutions => clientDefinitionsIni.GetStringValue(SETTINGS, "RecommendedResolutions", PreferedRenderWidth + "x" + PreferedRenderHeight).Split(',');
+        public string[] RecommendedResolutions => clientDefinitionsIni.GetStringValue(SETTINGS, "RecommendedResolutions",
+            $"{MinimumRenderWidth}x{MinimumRenderHeight},{MaximumRenderWidth}x{MaximumRenderHeight}").Split(',');
 
         public string WindowTitle => clientDefinitionsIni.GetStringValue(SETTINGS, "WindowTitle", string.Empty)
             .L10N("INI:ClientDefinitions:WindowTitle");
