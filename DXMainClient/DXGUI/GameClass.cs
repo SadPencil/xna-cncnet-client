@@ -412,6 +412,19 @@ namespace DTAClient.DXGUI
             }
 
             wm.SetBorderlessMode(borderlessWindowedClient);
+
+#if WINFORMS
+            // Enable resizable window for non-borderless windowed client
+            // Note: currently, this method is not perfect.
+            // `wm.WindowSizeChangedByUser` is actively ignored for now. The render size will not be updated to optimal when the window is resized,
+            // This is because it's hard to get the actual window size excluding window border.
+            if (!borderlessWindowedClient)
+            {
+                wm.SetFormBorderStyle(FormBorderStyle.Sizable);
+                wm.SetMaximizeBox(true);
+            }
+#endif
+
 #if !XNA
 
             if (borderlessWindowedClient)
