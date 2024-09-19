@@ -40,15 +40,11 @@ namespace DTAConfig
 
         public sealed override string ToString() => Width + "x" + Height;
 
-        public ScreenResolution(Point point)
+        public ScreenResolution(Rectangle rectangle)
         {
-            Width = point.X;
-            Height = point.Y;
+            Width = rectangle.Width;
+            Height = rectangle.Height;
         }
-
-        public static implicit operator ScreenResolution(Point point) => new(point);
-
-        public static implicit operator Point(ScreenResolution resolution) => new(resolution.Width, resolution.Height);
 
         public static implicit operator string(ScreenResolution resolution) => resolution.ToString();
 

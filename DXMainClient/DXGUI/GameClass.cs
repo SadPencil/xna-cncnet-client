@@ -164,11 +164,11 @@ namespace DTAClient.DXGUI
                 wm.SetFormBorderStyle(FormBorderStyle.Sizable);
                 wm.SetMaximizeBox(true);
 
-                ScreenResolution lastWindowSizeCaptured = wm.GraphicsDevice.Viewport.Bounds.Size;
+                ScreenResolution lastWindowSizeCaptured = new(wm.GraphicsDevice.Viewport.Bounds);
 
                 wm.WindowSizeChangedByUser += (sender, e) =>
                 {
-                    ScreenResolution currentWindowSize = wm.GraphicsDevice.Viewport.Bounds.Size;
+                    ScreenResolution currentWindowSize = new(wm.GraphicsDevice.Viewport.Bounds);
 
                     if (currentWindowSize != lastWindowSizeCaptured)
                     {
