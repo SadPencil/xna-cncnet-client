@@ -433,7 +433,8 @@ namespace DTAClient.DXGUI
             wm.CenterOnScreen();
 
             Logger.Log("Setting render resolution to " + renderResolutionX + "x" + renderResolutionY + ". Integer scaling: " + integerScale);
-            wm.SetRenderResolution(renderResolutionX, renderResolutionY, integerScale);
+            wm.IntegerScalingOnly = integerScale;
+            wm.SetRenderResolution(renderResolutionX, renderResolutionY);
         }
     }
 
