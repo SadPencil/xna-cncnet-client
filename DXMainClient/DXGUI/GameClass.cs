@@ -321,6 +321,7 @@ namespace DTAClient.DXGUI
             bool borderlessWindowedClient = UserINISettings.Instance.BorderlessWindowedClient;
 
             bool integerScale = UserINISettings.Instance.IntegerScaledClient;
+            wm.IntegerScalingOnly = integerScale;
 
             (int desktopWidth, int desktopHeight) = ScreenResolution.SafeMaximumResolution;
 
@@ -433,7 +434,6 @@ namespace DTAClient.DXGUI
             wm.CenterOnScreen();
 
             Logger.Log("Setting render resolution to " + renderResolutionX + "x" + renderResolutionY + ". Integer scaling: " + integerScale);
-            wm.IntegerScalingOnly = integerScale;
             wm.SetRenderResolution(renderResolutionX, renderResolutionY);
         }
     }
