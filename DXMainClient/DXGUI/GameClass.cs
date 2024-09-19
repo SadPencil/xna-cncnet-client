@@ -341,7 +341,7 @@ namespace DTAClient.DXGUI
             int renderResolutionX = 0;
             int renderResolutionY = 0;
 
-            if (!integerScale)
+            if (!integerScale || windowWidth < clientConfiguration.MinimumRenderWidth || windowHeight < clientConfiguration.MinimumRenderHeight)
             {
                 int initialXRes = Math.Max(windowWidth, clientConfiguration.MinimumRenderWidth);
                 initialXRes = Math.Min(initialXRes, clientConfiguration.MaximumRenderWidth);
