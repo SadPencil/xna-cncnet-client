@@ -166,11 +166,11 @@ namespace DTAClient.DXGUI
 
                 //// Automatically update render resolution when the window size changes
                 //// Disabled for now. It does not work as expected.
-                //ScreenResolution lastWindowSizeCaptured = new(wm.GraphicsDevice.Viewport.Bounds);
+                //ScreenResolution lastWindowSizeCaptured = new(wm.Game.Window.ClientBounds);
 
                 //wm.WindowSizeChangedByUser += (sender, e) =>
                 //{
-                //    ScreenResolution currentWindowSize = new(wm.GraphicsDevice.Viewport.Bounds);
+                //    ScreenResolution currentWindowSize = new(wm.Game.Window.ClientBounds);
 
                 //    if (currentWindowSize != lastWindowSizeCaptured)
                 //    {
