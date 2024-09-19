@@ -6,7 +6,10 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+
 using ClientCore;
+using ClientCore.Extensions;
+
 using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer
@@ -113,6 +116,8 @@ namespace DTAClient.Domain.Multiplayer
 
                 maps.Add(map);
             }
+
+            _translatedMapNames["Unknown"] = "Unknown".L10N("Client:Main:UnknownMap");
 
             foreach (Map map in maps)
             {
