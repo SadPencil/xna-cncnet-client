@@ -550,6 +550,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             base.OnGameOptionChanged();
 
+            // Don't broadcast game options if the current map or game mode is null.
+            // Don't worry about the game mode change. Upon a map is selected, OnGameOptionChanged() will be called again.
+            if (Map == null || GameMode == null)
+                return;
+
             if (!IsHost)
                 return;
 
