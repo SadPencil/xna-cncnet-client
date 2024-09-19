@@ -164,19 +164,21 @@ namespace DTAClient.DXGUI
                 wm.SetFormBorderStyle(FormBorderStyle.Sizable);
                 wm.SetMaximizeBox(true);
 
-                ScreenResolution lastWindowSizeCaptured = new(wm.GraphicsDevice.Viewport.Bounds);
+                //// Automatically update render resolution when the window size changes
+                //// Disabled for now. It does not work as expected.
+                //ScreenResolution lastWindowSizeCaptured = new(wm.GraphicsDevice.Viewport.Bounds);
 
-                wm.WindowSizeChangedByUser += (sender, e) =>
-                {
-                    ScreenResolution currentWindowSize = new(wm.GraphicsDevice.Viewport.Bounds);
+                //wm.WindowSizeChangedByUser += (sender, e) =>
+                //{
+                //    ScreenResolution currentWindowSize = new(wm.GraphicsDevice.Viewport.Bounds);
 
-                    if (currentWindowSize != lastWindowSizeCaptured)
-                    {
-                        Logger.Log($"Window size changed from {lastWindowSizeCaptured} to {currentWindowSize}.");
-                        lastWindowSizeCaptured = currentWindowSize;
-                        SetGraphicsMode(wm, currentWindowSize.Width, currentWindowSize.Height, centerOnScreen: false);
-                    }
-                };
+                //    if (currentWindowSize != lastWindowSizeCaptured)
+                //    {
+                //        Logger.Log($"Window size changed from {lastWindowSizeCaptured} to {currentWindowSize}.");
+                //        lastWindowSizeCaptured = currentWindowSize;
+                //        SetGraphicsMode(wm, currentWindowSize.Width, currentWindowSize.Height, centerOnScreen: false);
+                //    }
+                //};
             }
 #endif
 
