@@ -1921,9 +1921,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             sb.Remove(sb.Length - 1, 1);
             sb.Append(";");
-            sb.Append(Map.UntranslatedName);
+            sb.Append(Map?.UntranslatedName ?? "Unknown");
             sb.Append(";");
-            sb.Append(GameMode.UntranslatedUIName);
+            sb.Append(GameMode?.UntranslatedUIName ?? "Unknown");
             sb.Append(";");
             sb.Append(tunnelHandler.CurrentTunnel.Address + ":" + tunnelHandler.CurrentTunnel.Port);
             sb.Append(";");
