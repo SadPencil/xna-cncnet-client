@@ -769,6 +769,8 @@ namespace DTAConfig.OptionPanels
                 clientRes.Height != IniSettings.ClientResolutionY.Value)
                 restartRequired = true;
 
+            // TODO: since DTAConfig must not rely on DXMainClient, we can't notify the client to dynamically change the resolution or togging borderless windowed mode. Thus, we need to restart the client as a workaround.
+
             (IniSettings.ClientResolutionX.Value, IniSettings.ClientResolutionY.Value) = clientRes;
 
             if (IniSettings.BorderlessWindowedClient.Value != chkBorderlessClient.Checked)
