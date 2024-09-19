@@ -64,6 +64,10 @@ namespace DTAConfig
 
         // Accessing GraphicsAdapter.DefaultAdapter requiring DXMainClient.GameClass has been constructed. Lazy loading prevents possible null reference issues for now.
         private static ScreenResolution _desktopResolution = null;
+
+        /// <summary>
+        /// The resolution of primary monitor.
+        /// </summary>
         public static ScreenResolution DesktopResolution =>
             _desktopResolution ??= new(GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height);
 
@@ -71,6 +75,10 @@ namespace DTAConfig
         public static ScreenResolution HiDefLimitResolution { get; } = "3840x3840";
 
         private static ScreenResolution _safeMaximumResolution = null;
+
+        /// <summary>
+        /// The resolution of primary monitor, or the maximum resolution supported by the graphic profile, whichever is smaller.
+        /// </summary>
         public static ScreenResolution SafeMaximumResolution
         {
             get
@@ -84,6 +92,10 @@ namespace DTAConfig
         }
 
         private static ScreenResolution _safeFullScreenResolution = null;
+
+        /// <summary>
+        /// The maximum resolution supported by the graphic profile, or the largest full screen resolution supported by the primary monitor, whichever is smaller.
+        /// </summary>
         public static ScreenResolution SafeFullScreenResolution => _safeFullScreenResolution ??= GetFullScreenResolutions(minWidth: 800, minHeight: 600).Max();
 
         public static SortedSet<ScreenResolution> GetFullScreenResolutions(int minWidth, int minHeight) =>
