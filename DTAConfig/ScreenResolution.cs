@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace DTAConfig
@@ -38,6 +39,16 @@ namespace DTAConfig
         public static implicit operator ScreenResolution(string resolution) => new(resolution);
 
         public sealed override string ToString() => Width + "x" + Height;
+
+        public ScreenResolution(Point point)
+        {
+            Width = point.X;
+            Height = point.Y;
+        }
+
+        public static implicit operator ScreenResolution(Point point) => new(point);
+
+        public static implicit operator Point(ScreenResolution resolution) => new(resolution.Width, resolution.Height);
 
         public static implicit operator string(ScreenResolution resolution) => resolution.ToString();
 

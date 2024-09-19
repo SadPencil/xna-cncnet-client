@@ -153,10 +153,31 @@ namespace DTAClient.DXGUI
             };
 
             SetGraphicsMode(wm);
-#if WINFORMS
 
+#if WINFORMS
             wm.SetIcon(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), "clienticon.ico"));
             wm.SetControlBox(true);
+
+            // Enable resizable window for non-borderless windowed client
+            if (!UserINISettings.Instance.BorderlessWindowedClient)
+            {
+                wm.SetFormBorderStyle(FormBorderStyle.Sizable);
+                wm.SetMaximizeBox(true);
+
+                ScreenResolution lastWindowSizeCaptured = wm.GraphicsDevice.Viewport.Bounds.Size;
+
+                wm.WindowSizeChangedByUser += (sender, e) =>
+                {
+                    ScreenResolution currentWindowSize = wm.GraphicsDevice.Viewport.Bounds.Size;
+
+                    if (currentWindowSize != lastWindowSizeCaptured)
+                    {
+                        Logger.Log($"Window size changed from {lastWindowSizeCaptured} to {currentWindowSize}.");
+                        lastWindowSizeCaptured = currentWindowSize;
+                        SetGraphicsMode(wm, currentWindowSize.Width, currentWindowSize.Height, centerOnScreen: false);
+                    }
+                };
+            }
 #endif
 
             wm.Cursor.Textures = new Texture2D[]
@@ -311,16 +332,33 @@ namespace DTAClient.DXGUI
         /// TODO move to some helper class?
         /// </summary>
         /// <param name="wm">The window manager</param>
-        public static void SetGraphicsMode(WindowManager wm)
+        /// <param name="centerOnScreen">Whether to center the client window on the screen</param>
+        public static void SetGraphicsMode(WindowManager wm, bool centerOnScreen = true)
         {
-            var clientConfiguration = ClientConfiguration.Instance;
-
             int windowWidth = UserINISettings.Instance.ClientResolutionX;
             int windowHeight = UserINISettings.Instance.ClientResolutionY;
 
-            bool borderlessWindowedClient = UserINISettings.Instance.BorderlessWindowedClient;
+            SetGraphicsMode(wm, windowWidth, windowHeight, centerOnScreen);
+        }
 
+        /// <inheritdoc cref="SetGraphicsMode(WindowManager, bool)"/>
+        /// <param name="windowWidth">The viewport width</param>
+        /// <param name="windowHeight">The viewport height</param>
+        public static void SetGraphicsMode(WindowManager wm, int windowWidth, int windowHeight, bool centerOnScreen = true)
+        {
+            bool borderlessWindowedClient = UserINISettings.Instance.BorderlessWindowedClient;
             bool integerScale = UserINISettings.Instance.IntegerScaledClient;
+
+            SetGraphicsMode(wm, windowWidth, windowHeight, borderlessWindowedClient, integerScale, centerOnScreen);
+        }
+
+        /// <inheritdoc cref="SetGraphicsMode(WindowManager, int, int, bool)"/>
+        /// <param name="borderlessWindowedClient">Whether to use borderless windowed mode</param>
+        /// <param name="integerScale">Whether to use integer scaling</param>
+        public static void SetGraphicsMode(WindowManager wm, int windowWidth, int windowHeight, bool borderlessWindowedClient, bool integerScale, bool centerOnScreen = true)
+        {
+            var clientConfiguration = ClientConfiguration.Instance;
+
             wm.IntegerScalingOnly = integerScale;
 
             (int desktopWidth, int desktopHeight) = ScreenResolution.SafeMaximumResolution;
@@ -413,18 +451,6 @@ namespace DTAClient.DXGUI
 
             wm.SetBorderlessMode(borderlessWindowedClient);
 
-#if WINFORMS
-            // Enable resizable window for non-borderless windowed client
-            // Note: currently, this method is not perfect.
-            // `wm.WindowSizeChangedByUser` is actively ignored for now. The render size will not be updated to optimal when the window is resized,
-            // This is because it's hard to get the actual window size excluding window border.
-            if (!borderlessWindowedClient)
-            {
-                wm.SetFormBorderStyle(FormBorderStyle.Sizable);
-                wm.SetMaximizeBox(true);
-            }
-#endif
-
 #if !XNA
 
             if (borderlessWindowedClient)
@@ -444,7 +470,8 @@ namespace DTAClient.DXGUI
             }
 
 #endif
-            wm.CenterOnScreen();
+            if (centerOnScreen)
+                wm.CenterOnScreen();
 
             Logger.Log("Setting render resolution to " + renderResolutionX + "x" + renderResolutionY + ". Integer scaling: " + integerScale);
             wm.SetRenderResolution(renderResolutionX, renderResolutionY);
