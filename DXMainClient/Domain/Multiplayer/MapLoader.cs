@@ -117,8 +117,6 @@ namespace DTAClient.Domain.Multiplayer
                 maps.Add(map);
             }
 
-            _translatedMapNames["Unknown"] = "Unknown".L10N("Client:Main:Unknown");
-
             foreach (Map map in maps)
             {
                 AddMapToGameModes(map, false);
