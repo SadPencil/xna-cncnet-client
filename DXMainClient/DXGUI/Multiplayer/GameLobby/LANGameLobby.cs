@@ -550,11 +550,6 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             base.OnGameOptionChanged();
 
-            // Don't broadcast game options if the current map or game mode is null.
-            // Don't worry about the game mode change. Upon a map is selected, OnGameOptionChanged() will be called again.
-            if (Map == null || GameMode == null)
-                return;
-
             if (!IsHost)
                 return;
 
@@ -571,8 +566,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
 
             sb.Append(RandomSeed);
-            sb.Append(Map.SHA1);
-            sb.Append(GameMode.Name);
+            sb.Append(Map?.SHA1 ?? string.Empty);
+            sb.Append(GameMode?.Name ?? string.Empty);
             sb.Append(FrameSendRate);
             sb.Append(Convert.ToInt32(RemoveStartingLocations));
 
@@ -748,8 +743,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             sb.Append(ProgramConstants.LAN_PROTOCOL_REVISION);
             sb.Append(ProgramConstants.GAME_VERSION);
             sb.Append(localGame);
-            sb.Append(Map?.UntranslatedName ?? "Unknown");
-            sb.Append(GameMode?.UntranslatedUIName ?? "Unknown");
+            sb.Append(Map?.UntranslatedName ?? string.Empty);
+            sb.Append(GameMode?.UntranslatedUIName ?? string.Empty);
             sb.Append(0); // LoadedGameID
             var sbPlayers = new StringBuilder();
             Players.ForEach(p => sbPlayers.Append(p.Name + ","));

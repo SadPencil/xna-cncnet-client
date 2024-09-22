@@ -438,17 +438,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             string textUpper = tbGameSearch?.Text?.ToUpperInvariant();
 
-            string translatedGameMode = hg.GameMode switch
-            {
-                "Unknown" => "Unknown".L10N("Client:Main:Unknown"),
-                _ => hg.GameMode.L10N($"INI:GameModes:{hg.GameMode}:UIName", notify: false),
-            };
+            string translatedGameMode = string.IsNullOrEmpty(hg.GameMode) ? "Unknown".L10N("Client:Main:Unknown") :
+                hg.GameMode.L10N($"INI:GameModes:{hg.GameMode}:UIName", notify: false);
 
-            string translatedMapName = hg.Map switch
-            {
-                "Unknown" => "Unknown".L10N("Client:Main:Unknown"),
-                _ => mapLoader.TranslatedMapNames.ContainsKey(hg.Map) ? mapLoader.TranslatedMapNames[hg.Map] : null,
-            };
+            string translatedMapName = string.IsNullOrEmpty(hg.Map) ? "Unknown".L10N("Client:Main:Unknown") :
+                mapLoader.TranslatedMapNames.ContainsKey(hg.Map) ? mapLoader.TranslatedMapNames[hg.Map] : null;
 
             return
                 string.IsNullOrWhiteSpace(tbGameSearch?.Text) ||
@@ -1469,7 +1463,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 return;
 
             string msg = e.Message.Substring(5); // Cut out GAME part
-            string[] splitMessage = msg.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] splitMessage = msg.Split(new char[] { ';' });
 
             if (splitMessage.Length != 11)
             {

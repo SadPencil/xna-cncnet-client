@@ -968,11 +968,6 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             base.OnGameOptionChanged();
 
-            // Don't broadcast game options if the current map or game mode is null.
-            // Don't worry about the game mode change. Upon a map is selected, OnGameOptionChanged() will be called again.
-            if (Map == null || GameMode == null)
-                return;
-
             if (!IsHost)
                 return;
 
@@ -1001,15 +996,15 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             foreach (GameLobbyDropDown dd in DropDowns)
                 sb.Append(dd.SelectedIndex);
 
-            sb.Append(Convert.ToInt32(Map.Official));
-            sb.Append(Map.SHA1);
-            sb.Append(GameMode.Name);
+            sb.Append(Convert.ToInt32(Map?.Official ?? false));
+            sb.Append(Map?.SHA1 ?? string.Empty);
+            sb.Append(GameMode?.Name ?? string.Empty);
             sb.Append(FrameSendRate);
             sb.Append(MaxAhead);
             sb.Append(ProtocolVersion);
             sb.Append(RandomSeed);
             sb.Append(Convert.ToInt32(RemoveStartingLocations));
-            sb.Append(Map.UntranslatedName);
+            sb.Append(Map?.UntranslatedName ?? string.Empty);
 
             channel.SendCTCPMessage(sb.ToString(), QueuedMessageType.GAME_SETTINGS_MESSAGE, 11);
         }
@@ -1075,10 +1070,13 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             {
                 ChangeMap(null);
 
-                if (!isMapOfficial)
-                    RequestMap(mapSHA1);
-                else
-                    ShowOfficialMapMissingMessage(mapSHA1);
+                if (!string.IsNullOrEmpty(mapSHA1))
+                {
+                    if (!isMapOfficial)
+                        RequestMap(mapSHA1);
+                    else
+                        ShowOfficialMapMissingMessage(mapSHA1);
+                }
             }
             else if (GameModeMap != currentGameModeMap)
             {
@@ -1923,9 +1921,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             sb.Remove(sb.Length - 1, 1);
             sb.Append(";");
-            sb.Append(Map?.UntranslatedName ?? "Unknown");
+            sb.Append(Map?.UntranslatedName ?? string.Empty);
             sb.Append(";");
-            sb.Append(GameMode?.UntranslatedUIName ?? "Unknown");
+            sb.Append(GameMode?.UntranslatedUIName ?? string.Empty);
             sb.Append(";");
             sb.Append(tunnelHandler.CurrentTunnel.Address + ":" + tunnelHandler.CurrentTunnel.Port);
             sb.Append(";");
