@@ -438,7 +438,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             string textUpper = tbGameSearch?.Text?.ToUpperInvariant();
 
-            string translatedGameMode = hg.GameMode.L10N($"INI:GameModes:{hg.GameMode}:UIName", notify: false);
+            string translatedGameMode = hg.GameMode switch
+            {
+                "Unknown" => "Unknown".L10N("Client:Main:Unknown"),
+                _ => hg.GameMode.L10N($"INI:GameModes:{hg.GameMode}:UIName", notify: false),
+            };
 
             string translatedMapName = mapLoader.TranslatedMapNames.ContainsKey(hg.Map)
                 ? mapLoader.TranslatedMapNames[hg.Map]
