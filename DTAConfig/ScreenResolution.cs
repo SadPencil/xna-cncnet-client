@@ -58,7 +58,7 @@ namespace DTAConfig
 
         public static implicit operator (int Width, int Height)(ScreenResolution resolution) => new(resolution.Width, resolution.Height);
 
-        public bool Fit(ScreenResolution child) => this.Width >= child.Width && this.Height >= child.Height;
+        public bool Fits(ScreenResolution child) => this.Width >= child.Width && this.Height >= child.Height;
 
         public int CompareTo(ScreenResolution other) => (this.Width, this.Height).CompareTo(other);
 
@@ -84,7 +84,7 @@ namespace DTAConfig
             get
             {
 #if XNA
-                return _safeMaximumResolution ??= HiDefLimitResolution.Fit(DesktopResolution) ? DesktopResolution : HiDefLimitResolution;
+                return _safeMaximumResolution ??= HiDefLimitResolution.Fits(DesktopResolution) ? DesktopResolution : HiDefLimitResolution;
 #else
                 return _safeMaximumResolution ??= DesktopResolution;
 #endif
@@ -142,7 +142,7 @@ namespace DTAConfig
             {
                 ScreenResolution scaledResolution = (this.Width * i, this.Height * i);
 
-                if (maxResolution.Fit(scaledResolution))
+                if (maxResolution.Fits(scaledResolution))
                     resolutions.Add(scaledResolution);
                 else
                     break;
@@ -168,7 +168,7 @@ namespace DTAConfig
                 if (optimalResolution.Width < minWidth || optimalResolution.Height < minHeight)
                     continue;
 
-                if (!maxResolution.Fit(optimalResolution))
+                if (!maxResolution.Fits(optimalResolution))
                     continue;
 
                 windowedResolutions.Add(optimalResolution);

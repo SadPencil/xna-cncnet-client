@@ -86,7 +86,7 @@ namespace DTAConfig.OptionPanels
                 var maximumIngameResolution = new ScreenResolution(ClientConfiguration.Instance.MaximumIngameWidth, ClientConfiguration.Instance.MaximumIngameHeight);
 
 #if XNA
-                if (!ScreenResolution.HiDefLimitResolution.Fit(maximumIngameResolution))
+                if (!ScreenResolution.HiDefLimitResolution.Fits(maximumIngameResolution))
                     maximumIngameResolution = ScreenResolution.HiDefLimitResolution;
 #endif
 

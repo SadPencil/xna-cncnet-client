@@ -48,7 +48,7 @@ namespace DTAClient.DXGUI
             graphics.HardwareModeSwitch = false;
 
             // Enable HiDef on a large monitor.
-            if (!ScreenResolution.HiDefLimitResolution.Fit(ScreenResolution.DesktopResolution))
+            if (!ScreenResolution.HiDefLimitResolution.Fits(ScreenResolution.DesktopResolution))
             {
                 // Enabling HiDef profile drops legacy GPUs not supporting DirectX 10.
                 // In practice, it's recommended to have a DirectX 11 capable GPU.
