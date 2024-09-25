@@ -168,6 +168,9 @@ namespace DTAConfig
                 if (optimalResolution.Width < minWidth || optimalResolution.Height < minHeight)
                     continue;
 
+                if (!maxResolution.Fit(optimalResolution))
+                    continue;
+
                 windowedResolutions.Add(optimalResolution);
             }
 
