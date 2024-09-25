@@ -29,6 +29,12 @@ namespace DTAConfig
             Height = height;
         }
 
+        public ScreenResolution(Rectangle rectangle)
+        {
+            Width = rectangle.Width;
+            Height = rectangle.Height;
+        }
+
         public ScreenResolution(string resolution)
         {
             List<int> resolutionList = resolution.Trim().Split('x').Take(2).Select(int.Parse).ToList();
@@ -39,12 +45,6 @@ namespace DTAConfig
         public static implicit operator ScreenResolution(string resolution) => new(resolution);
 
         public sealed override string ToString() => Width + "x" + Height;
-
-        public ScreenResolution(Rectangle rectangle)
-        {
-            Width = rectangle.Width;
-            Height = rectangle.Height;
-        }
 
         public static implicit operator string(ScreenResolution resolution) => resolution.ToString();
 
