@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <RampastringXNAUIVersion>2.3.21-private-intscale-4af8c42</RampastringXNAUIVersion>
+    <RampastringXNAUIVersion>2.3.22</RampastringXNAUIVersion>
     <DotnetLibrariesVersion>8.0.0</DotnetLibrariesVersion>
   </PropertyGroup>
   <ItemGroup>
