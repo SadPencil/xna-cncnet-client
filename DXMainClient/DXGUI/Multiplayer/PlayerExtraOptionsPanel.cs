@@ -32,7 +32,7 @@ namespace DTAClient.DXGUI.Multiplayer
         public EventHandler OptionsChanged;
         public EventHandler OnClose;
 
-        private Map _map;
+        private GameModeMap _gameModeMap;
 
         public PlayerExtraOptionsPanel(WindowManager windowManager) : base(windowManager)
         {
@@ -115,8 +115,8 @@ namespace DTAClient.DXGUI.Multiplayer
                 if (!IsUseTeamStartMappings())
                     continue;
 
-                teamStartMappingPanel.EnableControls(_isHost && chkBoxUseTeamStartMappings.Checked && i < _map?.MaxPlayers);
-                RefreshTeamStartMappingPresets(_map?.TeamStartMappingPresets);
+                teamStartMappingPanel.EnableControls(_isHost && chkBoxUseTeamStartMappings.Checked && _gameModeMap != null && _gameModeMap.AllowedStartingLocations.Contains(i + 1));
+                RefreshTeamStartMappingPresets(_gameModeMap?.Map?.TeamStartMappingPresets);
             }
         }
 
@@ -257,12 +257,12 @@ namespace DTAClient.DXGUI.Multiplayer
             );
         }
 
-        public void UpdateForMap(Map map)
+        public void UpdateForGameModeMap(GameModeMap gameModeMap)
         {
-            if (_map == map)
+            if (_gameModeMap == gameModeMap)
                 return;
 
-            _map = map;
+            _gameModeMap = gameModeMap;
 
             RefreshTeamStartMappingPanels();
         }
