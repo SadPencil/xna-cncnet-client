@@ -177,7 +177,10 @@ namespace DTAClient.DXGUI.Multiplayer
                 // This is rare, so keep `forDeletion` null by default to avoid allocating a list on every SendMessage.
                 List<PlayerNetworkInterface>? forDeletion = null;
 
-                Debug.Assert(!broadcastInterfaces.IsEmpty, "No broadcast interfaces available in SendMessage!");
+                if (broadcastInterfaces.IsEmpty)
+                {
+                    Logger.Log("Warning: No broadcast interfaces available in SendMessage!");
+                }
 
                 foreach ((string key, PlayerNetworkInterface networkInterface) in broadcastInterfaces)
                 {
@@ -272,6 +275,11 @@ namespace DTAClient.DXGUI.Multiplayer
         }
 
         /// <summary>
+        /// Timeout in milliseconds for waiting for the listener thread to terminate during shutdown.
+        /// </summary>
+        private const int LISTENER_SHUTDOWN_TIMEOUT_MS = 1000;
+
+        /// <summary>
         /// Closes the socket and stops the listening thread.
         /// </summary>
         public void Shutdown()
@@ -295,7 +303,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
             if (listener != null)
             {
-                bool listenerTerminated = listener.Join(millisecondsTimeout: 1000);
+                bool listenerTerminated = listener.Join(millisecondsTimeout: LISTENER_SHUTDOWN_TIMEOUT_MS);
                 if (!listenerTerminated)
                     Logger.Log("Failed to shut down listener after timeout!");
                 

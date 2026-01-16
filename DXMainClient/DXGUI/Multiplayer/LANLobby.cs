@@ -114,8 +114,6 @@ namespace DTAClient.DXGUI.Multiplayer
         DiscordHandler discordHandler;
         PrivateMessagingWindow pmWindow;
 
-        bool initSuccess = false;
-
         public override void Initialize()
         {
             Name = "LANLobby";
@@ -371,9 +369,9 @@ namespace DTAClient.DXGUI.Multiplayer
             Visible = true;
             Enabled = true;
 
-            initSuccess = broadcastManager.Initialize();
+            bool success = broadcastManager.Initialize();
             
-            if (!initSuccess)
+            if (!success)
             {
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red,
                     "Creating LAN socket failed!".L10N("Client:Main:SocketFailure1")));
@@ -390,9 +388,6 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private void SendMessage(string message)
         {
-            if (!initSuccess)
-                return;
-
             // Wrap message with message ID at the beginning
             string wrappedMessage = messageDeduplicator.WrapMessage(message);
 
