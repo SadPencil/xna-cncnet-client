@@ -74,6 +74,9 @@ namespace DTAClient.DXGUI.Multiplayer
         /// <summary>
         /// Checks if a message ID has already been received (is a duplicate).
         /// If the message is not a duplicate, it is recorded.
+        /// Note: Uses DateTime.UtcNow for expiration timing. While a monotonic time source
+        /// would be more robust against system clock adjustments, DateTime is sufficient
+        /// for LAN lobby traffic where the 60-second expiration window is large.
         /// </summary>
         /// <param name="messageId">The message ID to check.</param>
         /// <returns>True if this is a duplicate message, false if it's new.</returns>
