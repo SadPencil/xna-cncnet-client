@@ -524,37 +524,35 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             DateTime now = DateTime.Now;
 
-            // Use GetOrAdd/AddOrUpdate pattern to simplify concurrent updates
-            bool shouldAccept = false;
-            
-            playerIPInfos.AddOrUpdate(
+            // Create a marker record to detect if we added a new entry
+            var newInfo = new PlayerIPInfo(ip, now);
+            var resultInfo = playerIPInfos.AddOrUpdate(
                 username,
-                // Add factory: if username doesn't exist, accept the message
-                _ => { shouldAccept = true; return new PlayerIPInfo(ip, now); },
+                // Add factory: if username doesn't exist, add new info
+                _ => newInfo,
                 // Update factory: if username exists, apply logic to determine if message should be accepted
                 (_, existing) =>
                 {
                     if (existing.IP.Equals(ip))
                     {
                         // Same IP: accept and update timestamp
-                        shouldAccept = true;
                         return new PlayerIPInfo(ip, now);
                     }
                     else if ((now - existing.LastMessageTime).TotalSeconds >= DUPLICATE_MESSAGE_IGNORE_SECONDS)
                     {
                         // Different IP but grace period expired: accept and update to new IP
-                        shouldAccept = true;
                         return new PlayerIPInfo(ip, now);
                     }
                     else
                     {
                         // Different IP within grace period: reject but keep existing entry
-                        shouldAccept = false;
                         return existing;
                     }
                 });
 
-            return shouldAccept;
+            // Accept if: (1) we added a new entry, (2) we updated timestamp for same IP, or (3) grace period expired
+            // Reject only if: different IP within grace period (result equals the unchanged existing)
+            return ReferenceEquals(resultInfo, newInfo) || resultInfo.IP.Equals(ip);
         }
 
         private void Listen()
@@ -627,9 +625,19 @@ namespace DTAClient.DXGUI.Multiplayer
 
                     // Decrement ListIndex for entries after the removed index
                     // Create a snapshot to avoid modifying collection during enumeration
-                    foreach (var key in playerUsernameInfos.Keys.ToArray())
+                    var keysToUpdate = new List<string>();
+                    foreach (var key in playerUsernameInfos.Keys)
                     {
                         if (playerUsernameInfos.TryGetValue(key, out var value) && value.ListIndex > idx)
+                        {
+                            keysToUpdate.Add(key);
+                        }
+                    }
+
+                    // Now update the entries
+                    foreach (var key in keysToUpdate)
+                    {
+                        if (playerUsernameInfos.TryGetValue(key, out var value))
                         {
                             var updated = new PlayerUsernameInfo(value.ListIndex - 1, value.Count);
                             playerUsernameInfos[key] = updated;
