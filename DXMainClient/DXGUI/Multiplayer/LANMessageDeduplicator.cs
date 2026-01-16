@@ -36,11 +36,13 @@ namespace DTAClient.DXGUI.Multiplayer
         
         /// <summary>
         /// Generates a unique random message ID.
-        /// Message IDs are 8-character alphanumeric strings.
+        /// Message IDs are prefixed with "MID_" followed by 8 alphanumeric characters
+        /// to avoid collision with legitimate message parameters.
         /// </summary>
         /// <returns>A unique message ID string.</returns>
         public string GenerateMessageId()
         {
+            // Lock is required because Random is not thread-safe
             lock (lockObject)
             {
                 const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -51,7 +53,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     id[i] = chars[random.Next(chars.Length)];
                 }
                 
-                return new string(id);
+                return "MID_" + new string(id);
             }
         }
         
@@ -82,6 +84,9 @@ namespace DTAClient.DXGUI.Multiplayer
         /// <summary>
         /// Removes expired message IDs from the tracking dictionary.
         /// This should be called periodically to prevent memory leaks.
+        /// Note: This performs O(n) enumeration of all tracked IDs. For typical LAN lobby
+        /// traffic this is acceptable, but for high-traffic scenarios a more efficient
+        /// data structure (e.g., priority queue) could be considered.
         /// </summary>
         public void CleanupExpiredMessageIds()
         {
