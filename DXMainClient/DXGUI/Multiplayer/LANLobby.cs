@@ -39,7 +39,6 @@ namespace DTAClient.DXGUI.Multiplayer
         private const double INACTIVITY_REMOVE_TIME = 10.0;
         private const double GAME_INACTIVITY_REMOVE_TIME = 20.0;
         private const double MESSAGE_ID_EXPIRATION_SECONDS = 60.0;
-        private const double MESSAGE_ID_CLEANUP_INTERVAL = 30.0;
 
         public LANLobby(
             WindowManager windowManager,
@@ -120,7 +119,6 @@ namespace DTAClient.DXGUI.Multiplayer
         Thread listener;
 
         TimeSpan timeSinceAliveMessage = TimeSpan.Zero;
-        TimeSpan timeSinceMessageIdCleanup = TimeSpan.Zero;
 
         MapLoader mapLoader;
 
@@ -257,8 +255,8 @@ namespace DTAClient.DXGUI.Multiplayer
             // Initialize player manager after lbPlayerList is created
             playerManager = new LANPlayerManager(lbPlayerList);
             
-            // Initialize message deduplicator
-            messageDeduplicator = new LANMessageDeduplicator(random, MESSAGE_ID_EXPIRATION_SECONDS);
+            // Initialize message deduplicator with a random seed
+            messageDeduplicator = new LANMessageDeduplicator(random.Next(), MESSAGE_ID_EXPIRATION_SECONDS);
 
             var assembly = Assembly.GetAssembly(typeof(GameCollection));
             using Stream unknownIconStream = assembly.GetManifestResourceStream("DTAClient.Icons.unknownicon.png");
@@ -336,6 +334,9 @@ namespace DTAClient.DXGUI.Multiplayer
                 if (!listenerTerminated)
                     Logger.Log("Failed to shut down listener after timeout!");
             }
+            
+            // Dispose the message deduplicator to stop the cleanup timer
+            messageDeduplicator?.Dispose();
         }
 
         private void LanGameLobby_GameBroadcast(object sender, GameBroadcastEventArgs e)
@@ -467,13 +468,12 @@ namespace DTAClient.DXGUI.Multiplayer
             if (!initSuccess)
                 return;
 
-            // Append message ID to the message
-            string messageId = messageDeduplicator.GenerateMessageId();
-            string messageWithId = message + ProgramConstants.LAN_DATA_SEPARATOR + messageId;
+            // Wrap message with message ID at the beginning
+            string wrappedMessage = messageDeduplicator.WrapMessage(message);
 
             byte[] buffer;
 
-            buffer = encoding.GetBytes(messageWithId);
+            buffer = encoding.GetBytes(wrappedMessage);
 
             // If there is a socket error when sending to an interface, remove that interface.
             // This is rare, so keep `forDeletion` null by default to avoid allocating a list on every SendMessage.
@@ -547,38 +547,24 @@ namespace DTAClient.DXGUI.Multiplayer
         // least one space are treated as invalid and are ignored.
         private void HandleNetworkMessage(string data, IPEndPoint endPoint)
         {
-            string[] commandAndParams = data.Split(' ');
+            // Unwrap message to extract message ID and check for duplicates
+            messageDeduplicator.UnwrapMessage(data, out string payload, out bool isDuplicate);
+            
+            if (isDuplicate)
+            {
+                // This is a duplicate message, ignore it
+                return;
+            }
+            
+            string[] commandAndParams = payload.Split(' ');
 
             if (commandAndParams.Length < 2)
                 return;
 
             string command = commandAndParams[0];
 
-            string[] parameters = data.Substring(command.Length + 1).Split(
+            string[] parameters = payload.Substring(command.Length + 1).Split(
                 new char[] { ProgramConstants.LAN_DATA_SEPARATOR });
-
-            // Extract message ID from the last parameter (if present)
-            // Message ID is always the last parameter in the array
-            // Message IDs are prefixed with "MID_" to avoid collision with legitimate parameters
-            string messageId = null;
-            if (parameters.Length > 0)
-            {
-                string lastParam = parameters[parameters.Length - 1];
-                if (LANMessageDeduplicator.IsValidMessageId(lastParam))
-                {
-                    messageId = lastParam;
-                    // Remove the message ID from parameters array
-                    // Using Array.Resize for better performance than LINQ
-                    Array.Resize(ref parameters, parameters.Length - 1);
-                }
-            }
-
-            // Check for duplicate message based on message ID
-            if (messageId != null && messageDeduplicator.IsDuplicate(messageId))
-            {
-                // This is a duplicate message, ignore it
-                return;
-            }
 
             LANLobbyUser user = playerManager.GetPlayerIfExist(endPoint);
 
@@ -819,14 +805,6 @@ namespace DTAClient.DXGUI.Multiplayer
             timeSinceAliveMessage += gameTime.ElapsedGameTime;
             if (timeSinceAliveMessage > TimeSpan.FromSeconds(ALIVE_MESSAGE_INTERVAL))
                 SendAlive();
-
-            // Periodically clean up expired message IDs
-            timeSinceMessageIdCleanup += gameTime.ElapsedGameTime;
-            if (timeSinceMessageIdCleanup > TimeSpan.FromSeconds(MESSAGE_ID_CLEANUP_INTERVAL))
-            {
-                messageDeduplicator.CleanupExpiredMessageIds();
-                timeSinceMessageIdCleanup = TimeSpan.Zero;
-            }
 
             base.Update(gameTime);
         }

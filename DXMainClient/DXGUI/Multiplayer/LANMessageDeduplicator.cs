@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
@@ -10,9 +11,9 @@ namespace DTAClient.DXGUI.Multiplayer
     /// Thread-safe message de-duplicator for LAN lobby messages.
     /// Generates unique message IDs for outgoing messages and tracks received message IDs
     /// to filter out duplicates. Message IDs expire after a configurable timeout to prevent
-    /// memory leaks.
+    /// memory leaks. Cleanup is performed automatically in a background thread.
     /// </summary>
-    internal class LANMessageDeduplicator
+    internal class LANMessageDeduplicator : IDisposable
     {
         private readonly Random random;
         private readonly object lockObject = new object();
@@ -23,15 +24,30 @@ namespace DTAClient.DXGUI.Multiplayer
         // Message ID expiration time in seconds
         private readonly double messageIdExpirationSeconds;
         
+        // Background cleanup
+        private readonly Timer cleanupTimer;
+        private const double CLEANUP_INTERVAL_SECONDS = 30.0;
+        
+        private bool disposed = false;
+        
         /// <summary>
         /// Initializes a new instance of the LANMessageDeduplicator class.
         /// </summary>
-        /// <param name="random">Random number generator for creating message IDs.</param>
+        /// <param name="randomSeed">Seed for the random number generator used to create message IDs.</param>
         /// <param name="messageIdExpirationSeconds">How long to keep message IDs before expiring them (default 60 seconds).</param>
-        public LANMessageDeduplicator(Random random, double messageIdExpirationSeconds = 60.0)
+        public LANMessageDeduplicator(int randomSeed, double messageIdExpirationSeconds = 60.0)
         {
-            this.random = random ?? throw new ArgumentNullException(nameof(random));
+            this.random = new Random(randomSeed);
             this.messageIdExpirationSeconds = messageIdExpirationSeconds;
+            
+            // Start automatic cleanup timer
+            int cleanupIntervalMs = (int)(CLEANUP_INTERVAL_SECONDS * 1000);
+            this.cleanupTimer = new Timer(CleanupCallback, null, cleanupIntervalMs, cleanupIntervalMs);
+        }
+        
+        private void CleanupCallback(object? state)
+        {
+            CleanupExpiredMessageIds();
         }
         
         /// <summary>
@@ -72,40 +88,79 @@ namespace DTAClient.DXGUI.Multiplayer
         }
         
         /// <summary>
-        /// Checks if a message ID has already been received (is a duplicate).
-        /// If the message is not a duplicate, it is recorded.
+        /// Records a received message ID and determines if it's a duplicate.
         /// Note: Uses DateTime.UtcNow for expiration timing. While a monotonic time source
         /// would be more robust against system clock adjustments, DateTime is sufficient
         /// for LAN lobby traffic where the 60-second expiration window is large.
         /// </summary>
-        /// <param name="messageId">The message ID to check.</param>
-        /// <returns>True if this is a duplicate message, false if it's new.</returns>
-        public bool IsDuplicate(string messageId)
+        /// <param name="messageId">The message ID to record.</param>
+        /// <param name="isDuplicate">True if this message ID was already recorded (duplicate), false if it's new.</param>
+        public void AddMessage(string messageId, out bool isDuplicate)
         {
             if (string.IsNullOrEmpty(messageId))
             {
                 // If no message ID provided, consider it not a duplicate
                 // This maintains backward compatibility with old clients
-                return false;
+                isDuplicate = false;
+                return;
             }
             
             DateTime expirationTime = DateTime.UtcNow.AddSeconds(messageIdExpirationSeconds);
             
             // Try to add the message ID with expiration time in one atomic operation
             // If it already exists, it's a duplicate
-            bool isDuplicate = !receivedMessageIds.TryAdd(messageId, expirationTime);
+            isDuplicate = !receivedMessageIds.TryAdd(messageId, expirationTime);
+        }
+        
+        /// <summary>
+        /// Wraps a message payload with a message ID at the beginning.
+        /// </summary>
+        /// <param name="payload">The original message payload.</param>
+        /// <returns>The wrapped message with message ID prepended.</returns>
+        public string WrapMessage(string payload)
+        {
+            string messageId = GenerateMessageId();
+            return messageId + payload;
+        }
+        
+        /// <summary>
+        /// Unwraps a message, extracting the message ID from the beginning and returning the payload.
+        /// Also checks if the message is a duplicate.
+        /// </summary>
+        /// <param name="wrappedMessage">The wrapped message with message ID at the beginning.</param>
+        /// <param name="payload">The unwrapped message payload.</param>
+        /// <param name="isDuplicate">True if this message ID was already recorded (duplicate), false if it's new.</param>
+        public void UnwrapMessage(string wrappedMessage, out string payload, out bool isDuplicate)
+        {
+            // Check if the message starts with a valid message ID
+            if (!string.IsNullOrEmpty(wrappedMessage) && wrappedMessage.Length >= 12)
+            {
+                string potentialMessageId = wrappedMessage.Substring(0, 12);
+                if (IsValidMessageId(potentialMessageId))
+                {
+                    // Extract message ID and payload
+                    string messageId = potentialMessageId;
+                    payload = wrappedMessage.Substring(12);
+                    
+                    // Check for duplicate
+                    AddMessage(messageId, out isDuplicate);
+                    return;
+                }
+            }
             
-            return isDuplicate;
+            // No valid message ID found - treat as non-duplicate for backward compatibility
+            payload = wrappedMessage;
+            isDuplicate = false;
         }
         
         /// <summary>
         /// Removes expired message IDs from the tracking dictionary.
-        /// This should be called periodically to prevent memory leaks.
+        /// This is called automatically by the background cleanup timer.
         /// Note: This performs O(n) enumeration of all tracked IDs. For typical LAN lobby
         /// traffic this is acceptable, but for high-traffic scenarios a more efficient
         /// data structure (e.g., priority queue) could be considered.
         /// </summary>
-        public void CleanupExpiredMessageIds()
+        private void CleanupExpiredMessageIds()
         {
             // Quick exit if there's nothing to clean up
             if (receivedMessageIds.IsEmpty)
@@ -141,6 +196,18 @@ namespace DTAClient.DXGUI.Multiplayer
         public void Clear()
         {
             receivedMessageIds.Clear();
+        }
+        
+        /// <summary>
+        /// Disposes the message deduplicator and stops the cleanup timer.
+        /// </summary>
+        public void Dispose()
+        {
+            if (!disposed)
+            {
+                cleanupTimer?.Dispose();
+                disposed = true;
+            }
         }
     }
 }
