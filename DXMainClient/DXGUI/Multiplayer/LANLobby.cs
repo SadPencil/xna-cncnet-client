@@ -629,24 +629,21 @@ namespace DTAClient.DXGUI.Multiplayer
                     int idx = info.ListIndex;
 
                     // Decrement ListIndex for entries after the removed index
-                    // Create a snapshot to avoid any potential issues with enumeration
-                    var keysToUpdate = new List<string>();
-                    foreach (var key in playerUsernameInfos.Keys.ToArray())
+                    // Create a snapshot and collect entries to update in one pass
+                    var entriesToUpdate = new List<KeyValuePair<string, PlayerUsernameInfo>>();
+                    foreach (var kvp in playerUsernameInfos.ToArray())
                     {
-                        if (playerUsernameInfos.TryGetValue(key, out var value) && value.ListIndex > idx)
+                        if (kvp.Value.ListIndex > idx)
                         {
-                            keysToUpdate.Add(key);
+                            entriesToUpdate.Add(kvp);
                         }
                     }
 
-                    // Now update the entries
-                    foreach (var key in keysToUpdate)
+                    // Update the entries
+                    foreach (var entry in entriesToUpdate)
                     {
-                        if (playerUsernameInfos.TryGetValue(key, out var value))
-                        {
-                            var updated = new PlayerUsernameInfo(value.ListIndex - 1, value.Count);
-                            playerUsernameInfos[key] = updated;
-                        }
+                        var updated = new PlayerUsernameInfo(entry.Value.ListIndex - 1, entry.Value.Count);
+                        playerUsernameInfos[entry.Key] = updated;
                     }
 
                     // Remove the username and remove UI item
