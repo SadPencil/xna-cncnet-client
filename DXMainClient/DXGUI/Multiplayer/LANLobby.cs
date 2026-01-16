@@ -568,7 +568,8 @@ namespace DTAClient.DXGUI.Multiplayer
                 {
                     messageId = lastParam;
                     // Remove the message ID from parameters array
-                    parameters = parameters.Take(parameters.Length - 1).ToArray();
+                    // Using Array.Resize for better performance than LINQ
+                    Array.Resize(ref parameters, parameters.Length - 1);
                 }
             }
 

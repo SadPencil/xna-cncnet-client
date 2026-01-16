@@ -86,15 +86,11 @@ namespace DTAClient.DXGUI.Multiplayer
                 return false;
             }
             
-            // Try to add the message ID; if it already exists, it's a duplicate
-            bool isDuplicate = !receivedMessageIds.TryAdd(messageId, DateTime.MinValue);
+            DateTime expirationTime = DateTime.UtcNow.AddSeconds(messageIdExpirationSeconds);
             
-            if (!isDuplicate)
-            {
-                // Successfully added, now update with actual expiration time
-                DateTime expirationTime = DateTime.UtcNow.AddSeconds(messageIdExpirationSeconds);
-                receivedMessageIds[messageId] = expirationTime;
-            }
+            // Try to add the message ID with expiration time in one atomic operation
+            // If it already exists, it's a duplicate
+            bool isDuplicate = !receivedMessageIds.TryAdd(messageId, expirationTime);
             
             return isDuplicate;
         }
