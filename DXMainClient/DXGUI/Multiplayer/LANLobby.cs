@@ -113,6 +113,11 @@ namespace DTAClient.DXGUI.Multiplayer
         // Use concurrent dictionaries for player info
         readonly ConcurrentDictionary<string, PlayerIPInfo> playerIPInfos = [];
         readonly ConcurrentDictionary<string, PlayerUsernameInfo> playerUsernameInfos = [];
+        
+        // Locks for UI controls to ensure thread-safe access
+        readonly object lbPlayerListLock = new object();
+        readonly object lbChatMessagesLock = new object();
+        readonly object lbGameListLock = new object();
 
         Thread listener;
 
@@ -406,7 +411,10 @@ namespace DTAClient.DXGUI.Multiplayer
         public void Open()
         {
             players.Clear();
-            lbPlayerList.Clear();
+            lock (lbPlayerListLock)
+            {
+                lbPlayerList.Clear();
+            }
             playerIPInfos.Clear();
             playerUsernameInfos.Clear();
 
@@ -415,7 +423,7 @@ namespace DTAClient.DXGUI.Multiplayer
             // For full thread safety, access must be synchronized wherever games are added, removed, or read.
             // The lock below provides synchronization against concurrent HandleNetworkMessage callbacks,
             // which improves safety even if it does not cover all possible access paths.
-            lock (lbGameList)
+            lock (lbGameListLock)
             {
                 lbGameList.ClearGames();
             }
@@ -516,40 +524,37 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             DateTime now = DateTime.Now;
 
-            var newInfo = new PlayerIPInfo(ip, now);
-            // Attempt to insert a new entry. If we inserted, accept the message.
-            var existing = playerIPInfos.GetOrAdd(username, newInfo);
-            if (ReferenceEquals(existing, newInfo))
-                return true;
-
-            // Otherwise use atomic updates: if the stored IP equals the incoming IP,
-            // update the timestamp by swapping in a new record instance.
-            while (true)
-            {
-                existing = playerIPInfos[username];
-
-                if (existing.IP.Equals(ip))
+            // Use GetOrAdd/AddOrUpdate pattern to simplify concurrent updates
+            bool shouldAccept = false;
+            
+            playerIPInfos.AddOrUpdate(
+                username,
+                // Add factory: if username doesn't exist, accept the message
+                _ => { shouldAccept = true; return new PlayerIPInfo(ip, now); },
+                // Update factory: if username exists, apply logic to determine if message should be accepted
+                (_, existing) =>
                 {
-                    var updated = existing with { LastMessageTime = now };
-                    if (playerIPInfos.TryUpdate(username, updated, existing))
-                        return true;
+                    if (existing.IP.Equals(ip))
+                    {
+                        // Same IP: accept and update timestamp
+                        shouldAccept = true;
+                        return new PlayerIPInfo(ip, now);
+                    }
+                    else if ((now - existing.LastMessageTime).TotalSeconds >= DUPLICATE_MESSAGE_IGNORE_SECONDS)
+                    {
+                        // Different IP but grace period expired: accept and update to new IP
+                        shouldAccept = true;
+                        return new PlayerIPInfo(ip, now);
+                    }
+                    else
+                    {
+                        // Different IP within grace period: reject but keep existing entry
+                        shouldAccept = false;
+                        return existing;
+                    }
+                });
 
-                    // Retry if update failed due to race
-                    continue;
-                }
-
-                if ((now - existing.LastMessageTime).TotalSeconds >= DUPLICATE_MESSAGE_IGNORE_SECONDS)
-                {
-                    var updated = new PlayerIPInfo(ip, now);
-                    if (playerIPInfos.TryUpdate(username, updated, existing) || playerIPInfos.TryAdd(username, updated))
-                        return true;
-
-                    // Retry if update failed
-                    continue;
-                }
-
-                return false;
-            }
+            return shouldAccept;
         }
 
         private void Listen()
@@ -590,80 +595,55 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private void PlayerListAdd(string username, Texture2D texture)
         {
-            // Try to add a new entry. If we succeed we must add the UI item.
-            int index = lbPlayerList.Items.Count;
-            var newInfo = new PlayerUsernameInfo(index, 1);
-
-            if (playerUsernameInfos.TryAdd(username, newInfo))
+            lock (lbPlayerListLock)
             {
-                lbPlayerList.AddItem(username, texture);
-                return;
-            }
+                // Check if username already exists
+                if (playerUsernameInfos.TryGetValue(username, out PlayerUsernameInfo existingInfo))
+                {
+                    // Increment count atomically
+                    var updated = new PlayerUsernameInfo(existingInfo.ListIndex, existingInfo.Count + 1);
+                    playerUsernameInfos[username] = updated;
+                    return;
+                }
 
-            // Another thread already had the username; increment the count atomically.
-            playerUsernameInfos.AddOrUpdate(username,
-                _ => new PlayerUsernameInfo(index, 1),
-                (key, existing) => new PlayerUsernameInfo(existing.ListIndex, existing.Count + 1));
+                // Add new entry
+                int index = lbPlayerList.Items.Count;
+                var newInfo = new PlayerUsernameInfo(index, 1);
+                playerUsernameInfos[username] = newInfo;
+                lbPlayerList.AddItem(username, texture);
+            }
         }
 
         private void PlayerListRemove(string username)
         {
-            if (!playerUsernameInfos.TryGetValue(username, out PlayerUsernameInfo info))
-                return;
-
-            if (info.Count == 1)
+            lock (lbPlayerListLock)
             {
-                int idx = info.ListIndex;
+                if (!playerUsernameInfos.TryGetValue(username, out PlayerUsernameInfo info))
+                    return;
 
-                // Decrement ListIndex for entries after the removed index. Use snapshots and TryUpdate to avoid locks.
-                var snapshot = playerUsernameInfos.ToArray();
-                foreach (var kv in snapshot)
+                if (info.Count == 1)
                 {
-                    var key = kv.Key;
-                    var val = kv.Value;
-                    if (val.ListIndex > idx)
+                    int idx = info.ListIndex;
+
+                    // Decrement ListIndex for entries after the removed index
+                    foreach (var kvp in playerUsernameInfos)
                     {
-                        // attempt to atomically replace value with decremented index
-                        while (true)
+                        if (kvp.Value.ListIndex > idx)
                         {
-                            if (!playerUsernameInfos.TryGetValue(key, out var current))
-                                break;
-                            // If current differs from snapshot value, avoid clobbering concurrent changes
-                            if (current.ListIndex != val.ListIndex || current.Count != val.Count)
-                                break;
-                            var updated = new PlayerUsernameInfo(current.ListIndex - 1, current.Count);
-                            if (playerUsernameInfos.TryUpdate(key, updated, current))
-                                break;
-                            // otherwise retry
+                            var updated = new PlayerUsernameInfo(kvp.Value.ListIndex - 1, kvp.Value.Count);
+                            playerUsernameInfos[kvp.Key] = updated;
                         }
                     }
-                }
 
-                // Remove the username and remove UI item
-                if (playerUsernameInfos.TryRemove(username, out _))
-                {
+                    // Remove the username and remove UI item
+                    playerUsernameInfos.TryRemove(username, out _);
                     lbPlayerList.RemoveItem(idx);
                 }
-            }
-            else
-            {
-                // Decrement count atomically
-                while (true)
+                else
                 {
-                    if (!playerUsernameInfos.TryGetValue(username, out var current))
-                        break;
-                    if (current.Count <= 1)
-                    {
-                        // Try to remove instead
-                        if (playerUsernameInfos.TryRemove(username, out _))
-                        {
-                            lbPlayerList.RemoveItem(current.ListIndex);
-                        }
-                        break;
-                    }
-                    var updated = new PlayerUsernameInfo(current.ListIndex, current.Count - 1);
-                    if (playerUsernameInfos.TryUpdate(username, updated, current))
-                        break;
+                    // Decrement count
+                    var updated = new PlayerUsernameInfo(info.ListIndex, info.Count - 1);
+                    playerUsernameInfos[username] = updated;
                 }
             }
         }
@@ -705,8 +685,15 @@ namespace DTAClient.DXGUI.Multiplayer
 
                         user = new LANLobbyUser(name, gameTexture, endPoint);
 
-                        players.TryAdd(key, user);
-                        PlayerListAdd(user.Name, gameTexture);
+                        // Use GetOrAdd to ensure atomicity: only add if not present
+                        user = players.GetOrAdd(key, user);
+                        
+                        // Only add to player list if this is truly a new user (we added it)
+                        // Check by comparing if the returned user matches our new instance
+                        if (players.TryGetValue(key, out var addedUser) && ReferenceEquals(addedUser, user))
+                        {
+                            PlayerListAdd(user.Name, gameTexture);
+                        }
                     }
 
                     user.TimeWithoutRefresh = TimeSpan.Zero;
@@ -728,7 +715,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     if (!IsNotDuplicateMessage(user.Name, endPoint.Address))
                         break;
 
-                    lock (lbChatMessages)
+                    lock (lbChatMessagesLock)
                     {
                         lbChatMessages.AddMessage(new ChatMessage(user.Name,
                             chatColors[colorIndex].XNAColor, DateTime.Now, parameters[1]));
@@ -757,7 +744,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
                     game.EndPoint = endPoint;
 
-                    lock (lbGameList)
+                    lock (lbGameListLock)
                     {
                         int existingGameIndex =
                             lbGameList.HostedGames.FindIndex(g => ((HostedLANGame)g).EndPoint.Equals(endPoint));
