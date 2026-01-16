@@ -110,8 +110,12 @@ namespace DTAClient.DXGUI.Multiplayer
         // Use a concurrent dictionary keyed by endpoint string to store players
         readonly ConcurrentDictionary<string, LANLobbyUser> players = [];
 
-        // Use concurrent dictionaries for player info
+        // Use concurrent dictionary for player IP tracking (accessed via duplicateMessageLock)
         readonly ConcurrentDictionary<string, PlayerIPInfo> playerIPInfos = [];
+        
+        // Use concurrent dictionary for player username tracking (accessed via lbPlayerListLock)
+        // Note: ConcurrentDictionary is used here for its safe enumeration capabilities.
+        // All modifications are protected by lbPlayerListLock, making indexer assignments safe.
         readonly ConcurrentDictionary<string, PlayerUsernameInfo> playerUsernameInfos = [];
         
         // Locks for UI controls to ensure thread-safe access
@@ -503,6 +507,9 @@ namespace DTAClient.DXGUI.Multiplayer
         // Immutable per-username IP info used for duplicate suppression.
         record PlayerIPInfo(IPAddress IP, DateTime LastMessageTime);
 
+        // Lock for duplicate message detection to ensure atomic check-and-update
+        readonly object duplicateMessageLock = new object();
+        
         /// <summary>
         /// Decide whether to accept a message from the given username that arrived
         /// from the specified IP address. This implements a local duplicate-suppression
@@ -522,42 +529,34 @@ namespace DTAClient.DXGUI.Multiplayer
         /// </summary>
         private bool IsNotDuplicateMessage(string username, IPAddress ip)
         {
-            DateTime now = DateTime.Now;
+            lock (duplicateMessageLock)
+            {
+                DateTime now = DateTime.Now;
 
-            // We need to track the existing info to detect if it was unchanged
-            PlayerIPInfo existingBeforeUpdate = null;
-            
-            // Create a marker record to detect if we added a new entry
-            var newInfo = new PlayerIPInfo(ip, now);
-            var resultInfo = playerIPInfos.AddOrUpdate(
-                username,
-                // Add factory: if username doesn't exist, add new info
-                _ => newInfo,
-                // Update factory: if username exists, apply logic to determine if message should be accepted
-                (_, existing) =>
+                if (!playerIPInfos.TryGetValue(username, out PlayerIPInfo existing))
                 {
-                    existingBeforeUpdate = existing;
-                    
-                    if (existing.IP.Equals(ip))
-                    {
-                        // Same IP: accept and update timestamp
-                        return new PlayerIPInfo(ip, now);
-                    }
-                    else if ((now - existing.LastMessageTime).TotalSeconds >= DUPLICATE_MESSAGE_IGNORE_SECONDS)
-                    {
-                        // Different IP but grace period expired: accept and update to new IP
-                        return new PlayerIPInfo(ip, now);
-                    }
-                    else
-                    {
-                        // Different IP within grace period: reject but keep existing entry
-                        return existing;
-                    }
-                });
+                    // New username - accept and add
+                    playerIPInfos[username] = new PlayerIPInfo(ip, now);
+                    return true;
+                }
 
-            // Accept if: (1) we added a new entry, or (2) we updated the entry (not same reference as existing)
-            // Reject only if: we returned the unchanged existing entry
-            return ReferenceEquals(resultInfo, newInfo) || (existingBeforeUpdate != null && !ReferenceEquals(resultInfo, existingBeforeUpdate));
+                if (existing.IP.Equals(ip))
+                {
+                    // Same IP: accept and update timestamp
+                    playerIPInfos[username] = new PlayerIPInfo(ip, now);
+                    return true;
+                }
+
+                if ((now - existing.LastMessageTime).TotalSeconds >= DUPLICATE_MESSAGE_IGNORE_SECONDS)
+                {
+                    // Different IP but grace period expired: accept and update to new IP
+                    playerIPInfos[username] = new PlayerIPInfo(ip, now);
+                    return true;
+                }
+
+                // Different IP within grace period: reject and keep existing entry
+                return false;
+            }
         }
 
         private void Listen()
