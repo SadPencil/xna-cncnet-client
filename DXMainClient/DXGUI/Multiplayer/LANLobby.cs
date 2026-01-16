@@ -369,12 +369,12 @@ namespace DTAClient.DXGUI.Multiplayer
             Visible = true;
             Enabled = true;
 
-            bool success = broadcastManager.Initialize();
+            bool success = broadcastManager.Initialize(out string errorMessage);
             
             if (!success)
             {
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red,
-                    "Creating LAN socket failed!".L10N("Client:Main:SocketFailure1")));
+                    "Creating LAN socket failed! Message:".L10N("Client:Main:SocketFailure1") + " " + errorMessage));
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red,
                     "Please check your firewall settings.".L10N("Client:Main:SocketFailure2")));
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red,

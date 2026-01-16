@@ -80,8 +80,9 @@ namespace DTAClient.DXGUI.Multiplayer
         /// <summary>
         /// Initializes the socket, binds it to the lobby port, and starts listening for messages.
         /// </summary>
+        /// <param name="errorMessage">If initialization fails, contains the exception message for debugging.</param>
         /// <returns>True if initialization succeeded, false otherwise.</returns>
-        public bool Initialize()
+        public bool Initialize(out string? errorMessage)
         {
             lock (socketLock)
             {
@@ -115,11 +116,13 @@ namespace DTAClient.DXGUI.Multiplayer
                     listener = new Thread(new ThreadStart(Listen));
                     listener.Start();
 
+                    errorMessage = null;
                     return true;
                 }
                 catch (SocketException ex)
                 {
                     Logger.Log("Creating LAN socket failed! Message: " + ex.ToString());
+                    errorMessage = ex.Message;
                     return false;
                 }
             }
