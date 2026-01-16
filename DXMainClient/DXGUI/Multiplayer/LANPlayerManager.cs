@@ -1,0 +1,157 @@
+using DTAClient.Domain.Multiplayer.LAN;
+using Microsoft.Xna.Framework.Graphics;
+using Rampastring.XNAUI.XNAControls;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+
+namespace DTAClient.DXGUI.Multiplayer
+{
+    /// <summary>
+    /// Thread-safe manager for LAN lobby players.
+    /// Encapsulates all player tracking operations to ensure atomicity between
+    /// the player dictionary and UI updates.
+    /// </summary>
+    internal class LANPlayerManager
+    {
+        private readonly object lockObject = new object();
+        private readonly Dictionary<string, LANLobbyUser> players = new Dictionary<string, LANLobbyUser>();
+        private readonly Dictionary<string, int> usernameToListIndex = new Dictionary<string, int>();
+        private readonly XNAListBox playerListBox;
+
+        public LANPlayerManager(XNAListBox playerListBox)
+        {
+            this.playerListBox = playerListBox ?? throw new ArgumentNullException(nameof(playerListBox));
+        }
+
+        /// <summary>
+        /// Attempts to add a new player. Returns true if the player was added, false if already exists.
+        /// This operation is atomic - both the internal dictionary and UI are updated together.
+        /// </summary>
+        /// <param name="endPoint">The endpoint (IP:Port) that uniquely identifies this connection.</param>
+        /// <param name="name">The player's username.</param>
+        /// <param name="gameTexture">The game icon texture.</param>
+        /// <returns>The LANLobbyUser instance (either newly created or existing).</returns>
+        public LANLobbyUser AddOrGetPlayer(IPEndPoint endPoint, string name, Texture2D gameTexture)
+        {
+            lock (lockObject)
+            {
+                string key = endPoint.ToString();
+
+                // If this endpoint already exists, return the existing user
+                if (players.TryGetValue(key, out LANLobbyUser existingUser))
+                {
+                    return existingUser;
+                }
+
+                // Create new user
+                var newUser = new LANLobbyUser(name, gameTexture, endPoint);
+                players[key] = newUser;
+
+                // Add to UI if username not already displayed
+                if (!usernameToListIndex.ContainsKey(name))
+                {
+                    int index = playerListBox.Items.Count;
+                    usernameToListIndex[name] = index;
+                    playerListBox.AddItem(name, gameTexture);
+                }
+
+                return newUser;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to get a player by endpoint.
+        /// </summary>
+        public LANLobbyUser GetPlayer(IPEndPoint endPoint)
+        {
+            lock (lockObject)
+            {
+                string key = endPoint.ToString();
+                players.TryGetValue(key, out LANLobbyUser user);
+                return user;
+            }
+        }
+
+        /// <summary>
+        /// Removes a player by endpoint. This operation is atomic.
+        /// </summary>
+        /// <returns>True if the player was removed, false if not found.</returns>
+        public bool RemovePlayer(IPEndPoint endPoint)
+        {
+            lock (lockObject)
+            {
+                string key = endPoint.ToString();
+
+                if (!players.TryGetValue(key, out LANLobbyUser user))
+                {
+                    return false;
+                }
+
+                players.Remove(key);
+
+                // Check if any other player has the same username
+                bool usernameStillInUse = players.Values.Any(p => p.Name == user.Name);
+
+                if (!usernameStillInUse && usernameToListIndex.TryGetValue(user.Name, out int index))
+                {
+                    // Remove from UI
+                    usernameToListIndex.Remove(user.Name);
+                    playerListBox.RemoveItem(index);
+
+                    // Update indices for all usernames that came after the removed one
+                    var keysToUpdate = usernameToListIndex
+                        .Where(kvp => kvp.Value > index)
+                        .Select(kvp => kvp.Key)
+                        .ToList();
+
+                    foreach (var username in keysToUpdate)
+                    {
+                        usernameToListIndex[username]--;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Gets a thread-safe snapshot of all players.
+        /// </summary>
+        public List<LANLobbyUser> GetAllPlayers()
+        {
+            lock (lockObject)
+            {
+                return players.Values.ToList();
+            }
+        }
+
+        /// <summary>
+        /// Clears all players from both internal tracking and UI.
+        /// </summary>
+        public void Clear()
+        {
+            lock (lockObject)
+            {
+                players.Clear();
+                usernameToListIndex.Clear();
+                playerListBox.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Gets the current player count.
+        /// </summary>
+        public int Count
+        {
+            get
+            {
+                lock (lockObject)
+                {
+                    return players.Count;
+                }
+            }
+        }
+    }
+}
