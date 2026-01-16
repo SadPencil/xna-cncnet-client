@@ -238,7 +238,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     IPEndPoint ipEndPoint = (IPEndPoint)endPoint;
                     string data = encoding.GetString(buffer, 0, receivedBytes);
 
-                    if (data == string.Empty)
+                    if (string.IsNullOrEmpty(data))
                         continue;
 
                     // Dispatch to main thread if callback is provided
