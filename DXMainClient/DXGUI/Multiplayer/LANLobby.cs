@@ -619,7 +619,7 @@ namespace DTAClient.DXGUI.Multiplayer
                         if (gameIndex > -1 && gameIndex < gameCollection.GameList.Count)
                             gameTexture = gameCollection.GameList[gameIndex].Texture;
 
-                        user = playerManager.AddOrGetPlayer(endPoint, name, gameTexture);
+                        user = playerManager.GetOrCreatePlayer(endPoint, name, gameTexture);
                     }
 
                     user.TimeWithoutRefresh = TimeSpan.Zero;

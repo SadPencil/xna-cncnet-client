@@ -26,14 +26,14 @@ namespace DTAClient.DXGUI.Multiplayer
         }
 
         /// <summary>
-        /// Attempts to add a new player. Returns true if the player was added, false if already exists.
+        /// Gets or creates a player. Returns the LANLobbyUser instance (either newly created or existing).
         /// This operation is atomic - both the internal dictionary and UI are updated together.
         /// </summary>
         /// <param name="endPoint">The endpoint (IP:Port) that uniquely identifies this connection.</param>
         /// <param name="name">The player's username.</param>
         /// <param name="gameTexture">The game icon texture.</param>
         /// <returns>The LANLobbyUser instance (either newly created or existing).</returns>
-        public LANLobbyUser AddOrGetPlayer(IPEndPoint endPoint, string name, Texture2D gameTexture)
+        public LANLobbyUser GetOrCreatePlayer(IPEndPoint endPoint, string name, Texture2D gameTexture)
         {
             lock (lockObject)
             {
@@ -101,11 +101,17 @@ namespace DTAClient.DXGUI.Multiplayer
                     playerListBox.RemoveItem(index);
 
                     // Update indices for all usernames that came after the removed one
-                    var keysToUpdate = usernameToListIndex
-                        .Where(kvp => kvp.Value > index)
-                        .Select(kvp => kvp.Key)
-                        .ToList();
+                    // We need to iterate carefully to avoid modifying the dictionary while iterating
+                    var keysToUpdate = new List<string>();
+                    foreach (var kvp in usernameToListIndex)
+                    {
+                        if (kvp.Value > index)
+                        {
+                            keysToUpdate.Add(kvp.Key);
+                        }
+                    }
 
+                    // Apply the updates
                     foreach (var username in keysToUpdate)
                     {
                         usernameToListIndex[username]--;
