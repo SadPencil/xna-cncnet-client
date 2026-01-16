@@ -28,7 +28,7 @@ namespace DTAClient.DXGUI.Multiplayer
         private readonly Timer cleanupTimer;
         private const double CLEANUP_INTERVAL_SECONDS = 30.0;
         
-        private bool disposed = false;
+        private int disposed = 0;
         
         /// <summary>
         /// Initializes a new instance of the LANMessageDeduplicator class.
@@ -47,7 +47,10 @@ namespace DTAClient.DXGUI.Multiplayer
         
         private void CleanupCallback(object? state)
         {
-            CleanupExpiredMessageIds();
+            if (disposed == 0)
+            {
+                CleanupExpiredMessageIds();
+            }
         }
         
         /// <summary>
@@ -159,9 +162,14 @@ namespace DTAClient.DXGUI.Multiplayer
         /// Note: This performs O(n) enumeration of all tracked IDs. For typical LAN lobby
         /// traffic this is acceptable, but for high-traffic scenarios a more efficient
         /// data structure (e.g., priority queue) could be considered.
+        /// ConcurrentDictionary operations (TryRemove, enumeration) are thread-safe.
         /// </summary>
         private void CleanupExpiredMessageIds()
         {
+            // Check if disposed
+            if (disposed != 0)
+                return;
+                
             // Quick exit if there's nothing to clean up
             if (receivedMessageIds.IsEmpty)
                 return;
@@ -169,12 +177,14 @@ namespace DTAClient.DXGUI.Multiplayer
             DateTime now = DateTime.UtcNow;
             
             // Find all expired message IDs
+            // ConcurrentDictionary enumeration is thread-safe
             var expiredIds = receivedMessageIds
                 .Where(kvp => kvp.Value < now)
                 .Select(kvp => kvp.Key)
                 .ToList();
             
             // Remove expired IDs
+            // TryRemove is thread-safe
             foreach (var id in expiredIds)
             {
                 receivedMessageIds.TryRemove(id, out _);
@@ -203,11 +213,11 @@ namespace DTAClient.DXGUI.Multiplayer
         /// </summary>
         public void Dispose()
         {
-            if (!disposed)
+            if (Interlocked.CompareExchange(ref disposed, 1, 0) == 0)
             {
                 cleanupTimer?.Dispose();
-                disposed = true;
             }
+            GC.SuppressFinalize(this);
         }
     }
 }
