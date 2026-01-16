@@ -524,6 +524,9 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             DateTime now = DateTime.Now;
 
+            // We need to track the existing info to detect if it was unchanged
+            PlayerIPInfo existingBeforeUpdate = null;
+            
             // Create a marker record to detect if we added a new entry
             var newInfo = new PlayerIPInfo(ip, now);
             var resultInfo = playerIPInfos.AddOrUpdate(
@@ -533,6 +536,8 @@ namespace DTAClient.DXGUI.Multiplayer
                 // Update factory: if username exists, apply logic to determine if message should be accepted
                 (_, existing) =>
                 {
+                    existingBeforeUpdate = existing;
+                    
                     if (existing.IP.Equals(ip))
                     {
                         // Same IP: accept and update timestamp
@@ -550,9 +555,9 @@ namespace DTAClient.DXGUI.Multiplayer
                     }
                 });
 
-            // Accept if: (1) we added a new entry, (2) we updated timestamp for same IP, or (3) grace period expired
-            // Reject only if: different IP within grace period (result equals the unchanged existing)
-            return ReferenceEquals(resultInfo, newInfo) || resultInfo.IP.Equals(ip);
+            // Accept if: (1) we added a new entry, or (2) we updated the entry (not same reference as existing)
+            // Reject only if: we returned the unchanged existing entry
+            return ReferenceEquals(resultInfo, newInfo) || (existingBeforeUpdate != null && !ReferenceEquals(resultInfo, existingBeforeUpdate));
         }
 
         private void Listen()
@@ -624,9 +629,9 @@ namespace DTAClient.DXGUI.Multiplayer
                     int idx = info.ListIndex;
 
                     // Decrement ListIndex for entries after the removed index
-                    // Create a snapshot to avoid modifying collection during enumeration
+                    // Create a snapshot to avoid any potential issues with enumeration
                     var keysToUpdate = new List<string>();
-                    foreach (var key in playerUsernameInfos.Keys)
+                    foreach (var key in playerUsernameInfos.Keys.ToArray())
                     {
                         if (playerUsernameInfos.TryGetValue(key, out var value) && value.ListIndex > idx)
                         {
