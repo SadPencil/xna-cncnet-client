@@ -58,6 +58,20 @@ namespace DTAClient.DXGUI.Multiplayer
         }
         
         /// <summary>
+        /// Checks if a string is a valid message ID.
+        /// Message IDs must start with "MID_" followed by 8 alphanumeric characters.
+        /// </summary>
+        /// <param name="value">The string to validate.</param>
+        /// <returns>True if the string is a valid message ID, false otherwise.</returns>
+        public static bool IsValidMessageId(string value)
+        {
+            return !string.IsNullOrEmpty(value) &&
+                   value.StartsWith("MID_") &&
+                   value.Length == 12 &&
+                   value.Substring(4).All(c => char.IsLetterOrDigit(c));
+        }
+        
+        /// <summary>
         /// Checks if a message ID has already been received (is a duplicate).
         /// If the message is not a duplicate, it is recorded.
         /// </summary>
@@ -72,11 +86,15 @@ namespace DTAClient.DXGUI.Multiplayer
                 return false;
             }
             
-            DateTime now = DateTime.UtcNow;
-            DateTime expirationTime = now.AddSeconds(messageIdExpirationSeconds);
-            
             // Try to add the message ID; if it already exists, it's a duplicate
-            bool isDuplicate = !receivedMessageIds.TryAdd(messageId, expirationTime);
+            bool isDuplicate = !receivedMessageIds.TryAdd(messageId, DateTime.MinValue);
+            
+            if (!isDuplicate)
+            {
+                // Successfully added, now update with actual expiration time
+                DateTime expirationTime = DateTime.UtcNow.AddSeconds(messageIdExpirationSeconds);
+                receivedMessageIds[messageId] = expirationTime;
+            }
             
             return isDuplicate;
         }
@@ -90,6 +108,10 @@ namespace DTAClient.DXGUI.Multiplayer
         /// </summary>
         public void CleanupExpiredMessageIds()
         {
+            // Quick exit if there's nothing to clean up
+            if (receivedMessageIds.IsEmpty)
+                return;
+            
             DateTime now = DateTime.UtcNow;
             
             // Find all expired message IDs

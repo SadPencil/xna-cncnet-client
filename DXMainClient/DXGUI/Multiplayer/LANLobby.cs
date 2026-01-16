@@ -563,13 +563,8 @@ namespace DTAClient.DXGUI.Multiplayer
             string messageId = null;
             if (parameters.Length > 0)
             {
-                // The last parameter might be the message ID
-                // We need to check if it looks like a message ID (starts with "MID_" followed by 8 alphanumeric characters)
                 string lastParam = parameters[parameters.Length - 1];
-                if (!string.IsNullOrEmpty(lastParam) && 
-                    lastParam.StartsWith("MID_") && 
-                    lastParam.Length == 12 &&
-                    lastParam.Substring(4).All(c => char.IsLetterOrDigit(c)))
+                if (LANMessageDeduplicator.IsValidMessageId(lastParam))
                 {
                     messageId = lastParam;
                     // Remove the message ID from parameters array
