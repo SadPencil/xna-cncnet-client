@@ -626,12 +626,13 @@ namespace DTAClient.DXGUI.Multiplayer
                     int idx = info.ListIndex;
 
                     // Decrement ListIndex for entries after the removed index
-                    foreach (var kvp in playerUsernameInfos)
+                    // Create a snapshot to avoid modifying collection during enumeration
+                    foreach (var key in playerUsernameInfos.Keys.ToArray())
                     {
-                        if (kvp.Value.ListIndex > idx)
+                        if (playerUsernameInfos.TryGetValue(key, out var value) && value.ListIndex > idx)
                         {
-                            var updated = new PlayerUsernameInfo(kvp.Value.ListIndex - 1, kvp.Value.Count);
-                            playerUsernameInfos[kvp.Key] = updated;
+                            var updated = new PlayerUsernameInfo(value.ListIndex - 1, value.Count);
+                            playerUsernameInfos[key] = updated;
                         }
                     }
 
@@ -683,14 +684,14 @@ namespace DTAClient.DXGUI.Multiplayer
                         if (gameIndex > -1 && gameIndex < gameCollection.GameList.Count)
                             gameTexture = gameCollection.GameList[gameIndex].Texture;
 
-                        user = new LANLobbyUser(name, gameTexture, endPoint);
+                        var newUser = new LANLobbyUser(name, gameTexture, endPoint);
 
                         // Use GetOrAdd to ensure atomicity: only add if not present
-                        user = players.GetOrAdd(key, user);
+                        // If the returned value is our new instance, we added it; otherwise another thread did
+                        user = players.GetOrAdd(key, newUser);
                         
-                        // Only add to player list if this is truly a new user (we added it)
-                        // Check by comparing if the returned user matches our new instance
-                        if (players.TryGetValue(key, out var addedUser) && ReferenceEquals(addedUser, user))
+                        // Only add to player list if we successfully added a new user
+                        if (ReferenceEquals(user, newUser))
                         {
                             PlayerListAdd(user.Name, gameTexture);
                         }
