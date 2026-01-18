@@ -291,7 +291,8 @@ namespace DTAClient.DXGUI.Multiplayer
                 while (!stopRefresher)
                 {
                     // Sleep for the refresh interval, but check periodically for stop signal
-                    for (int i = 0; i < INTERFACE_REFRESH_INTERVAL_MS / STOP_CHECK_INTERVAL_MS && !stopRefresher; i++)
+                    int iterations = INTERFACE_REFRESH_INTERVAL_MS / STOP_CHECK_INTERVAL_MS;
+                    for (int i = 0; i < iterations && !stopRefresher; i++)
                     {
                         Thread.Sleep(STOP_CHECK_INTERVAL_MS);
                     }
@@ -305,6 +306,10 @@ namespace DTAClient.DXGUI.Multiplayer
 
                     lock (socketLock)
                     {
+                        // Check stop flag again inside lock to avoid race condition
+                        if (stopRefresher)
+                            break;
+
                         // Check if socket is still valid
                         if (socket == null || !socket.IsBound)
                             break;
@@ -344,11 +349,11 @@ namespace DTAClient.DXGUI.Multiplayer
         /// </summary>
         public void Shutdown()
         {
-            // Signal the refresher thread to stop
-            stopRefresher = true;
-
             lock (socketLock)
             {
+                // Signal the refresher thread to stop (inside lock for thread safety)
+                stopRefresher = true;
+
                 if (socket != null && socket.IsBound)
                 {
                     try
@@ -375,6 +380,8 @@ namespace DTAClient.DXGUI.Multiplayer
 
             if (interfaceRefresher != null)
             {
+                // Interrupt the thread to wake it from sleep
+                interfaceRefresher.Interrupt();
                 bool refresherTerminated = interfaceRefresher.Join(millisecondsTimeout: THREAD_SHUTDOWN_TIMEOUT_MS);
                 if (!refresherTerminated)
                     Logger.Log("Failed to shut down interface refresher after timeout!");
