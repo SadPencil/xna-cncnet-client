@@ -30,6 +30,7 @@ namespace DTAClient.DXGUI.Multiplayer
         private Socket? socket;
         private Thread? listener;
         private Thread? interfaceRefresher;
+        private volatile bool stopRefresher = false;
         private int disposed = 0;
 
         /// <summary>
@@ -111,6 +112,9 @@ namespace DTAClient.DXGUI.Multiplayer
                     Logger.Log("Creating LAN socket failed! Message: " + ex.ToString());
                     throw;
                 }
+
+                // Reset stop flag for the refresher thread
+                stopRefresher = false;
 
                 Logger.Log("Starting LAN broadcast message listener.");
                 listener = new Thread(new ThreadStart(Listen));
@@ -279,12 +283,19 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             try
             {
-                while (true)
+                while (!stopRefresher)
                 {
-                    Thread.Sleep(INTERFACE_REFRESH_INTERVAL_MS);
+                    // Sleep for the refresh interval, but check periodically for stop signal
+                    for (int i = 0; i < INTERFACE_REFRESH_INTERVAL_MS / 100 && !stopRefresher; i++)
+                    {
+                        Thread.Sleep(100);
+                    }
+
+                    if (stopRefresher)
+                        break;
 
                     // Check if we're disposed
-                    if (Interlocked.CompareExchange(ref disposed, 0, 0) != 0)
+                    if (Volatile.Read(ref disposed) != 0)
                         break;
 
                     lock (socketLock)
@@ -328,6 +339,9 @@ namespace DTAClient.DXGUI.Multiplayer
         /// </summary>
         public void Shutdown()
         {
+            // Signal the refresher thread to stop
+            stopRefresher = true;
+
             lock (socketLock)
             {
                 if (socket != null && socket.IsBound)
@@ -356,8 +370,6 @@ namespace DTAClient.DXGUI.Multiplayer
 
             if (interfaceRefresher != null)
             {
-                // Interrupt the thread to wake it from sleep
-                interfaceRefresher.Interrupt();
                 bool refresherTerminated = interfaceRefresher.Join(millisecondsTimeout: LISTENER_SHUTDOWN_TIMEOUT_MS);
                 if (!refresherTerminated)
                     Logger.Log("Failed to shut down interface refresher after timeout!");
