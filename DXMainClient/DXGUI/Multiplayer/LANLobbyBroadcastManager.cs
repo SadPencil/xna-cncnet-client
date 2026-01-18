@@ -276,6 +276,11 @@ namespace DTAClient.DXGUI.Multiplayer
         private const int INTERFACE_REFRESH_INTERVAL_MS = 5000;
 
         /// <summary>
+        /// Interval in milliseconds for checking the stop signal during sleep.
+        /// </summary>
+        private const int STOP_CHECK_INTERVAL_MS = 100;
+
+        /// <summary>
         /// Background thread that periodically refreshes network interfaces.
         /// This ensures that the broadcast list stays up-to-date with network changes.
         /// </summary>
@@ -286,9 +291,9 @@ namespace DTAClient.DXGUI.Multiplayer
                 while (!stopRefresher)
                 {
                     // Sleep for the refresh interval, but check periodically for stop signal
-                    for (int i = 0; i < INTERFACE_REFRESH_INTERVAL_MS / 100 && !stopRefresher; i++)
+                    for (int i = 0; i < INTERFACE_REFRESH_INTERVAL_MS / STOP_CHECK_INTERVAL_MS && !stopRefresher; i++)
                     {
-                        Thread.Sleep(100);
+                        Thread.Sleep(STOP_CHECK_INTERVAL_MS);
                     }
 
                     if (stopRefresher)
@@ -330,9 +335,9 @@ namespace DTAClient.DXGUI.Multiplayer
         }
 
         /// <summary>
-        /// Timeout in milliseconds for waiting for the listener thread to terminate during shutdown.
+        /// Timeout in milliseconds for waiting for threads to terminate during shutdown.
         /// </summary>
-        private const int LISTENER_SHUTDOWN_TIMEOUT_MS = 1000;
+        private const int THREAD_SHUTDOWN_TIMEOUT_MS = 1000;
 
         /// <summary>
         /// Closes the socket and stops the listening thread.
@@ -361,7 +366,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
             if (listener != null)
             {
-                bool listenerTerminated = listener.Join(millisecondsTimeout: LISTENER_SHUTDOWN_TIMEOUT_MS);
+                bool listenerTerminated = listener.Join(millisecondsTimeout: THREAD_SHUTDOWN_TIMEOUT_MS);
                 if (!listenerTerminated)
                     Logger.Log("Failed to shut down listener after timeout!");
 
@@ -370,7 +375,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
             if (interfaceRefresher != null)
             {
-                bool refresherTerminated = interfaceRefresher.Join(millisecondsTimeout: LISTENER_SHUTDOWN_TIMEOUT_MS);
+                bool refresherTerminated = interfaceRefresher.Join(millisecondsTimeout: THREAD_SHUTDOWN_TIMEOUT_MS);
                 if (!refresherTerminated)
                     Logger.Log("Failed to shut down interface refresher after timeout!");
 
