@@ -105,7 +105,13 @@ namespace DTAClient.DXGUI.Multiplayer
                         EnableBroadcast = true
                     };
                     socket.Bind(new IPEndPoint(IPAddress.Any, lobbyPort));
-                    AddBroadcastInterfaces();
+                    
+                    // Discover initial broadcast interfaces
+                    var initialInterfaces = DiscoverBroadcastInterfaces(lobbyPort);
+                    foreach (var (key, netIf) in initialInterfaces)
+                    {
+                        broadcastInterfaces[key] = netIf;
+                    }
                 }
                 catch (SocketException ex)
                 {
@@ -130,13 +136,16 @@ namespace DTAClient.DXGUI.Multiplayer
         }
 
         /// <summary>
-        /// Discovers and adds all available network interfaces for broadcasting.
+        /// Discovers all available network interfaces for broadcasting.
         /// This method scans only "up" network interfaces and identifies those with valid IPv4 addresses.
         /// </summary>
-        private void AddBroadcastInterfaces()
+        /// <param name="port">The port to use for broadcast endpoints.</param>
+        /// <returns>A dictionary of network interfaces keyed by their local IP address.</returns>
+        private static Dictionary<string, PlayerNetworkInterface> DiscoverBroadcastInterfaces(int port)
         {
             Logger.Log("Discovering broadcast interfaces.");
 
+            var discoveredInterfaces = new Dictionary<string, PlayerNetworkInterface>();
             NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
             foreach (NetworkInterface iface in interfaces)
             {
@@ -167,16 +176,17 @@ namespace DTAClient.DXGUI.Multiplayer
                 IPAddress broadcastIP = new IPAddress(broadcastBytes);
 
                 string key = localIPAddress.ToString();
-                var netIf = new PlayerNetworkInterface(localIPAddress, new IPEndPoint(broadcastIP, lobbyPort));
-                broadcastInterfaces[key] = netIf;
+                var netIf = new PlayerNetworkInterface(localIPAddress, new IPEndPoint(broadcastIP, port));
+                discoveredInterfaces[key] = netIf;
             }
 
-            if (broadcastInterfaces.IsEmpty)
+            if (discoveredInterfaces.Count == 0)
             {
                 Logger.Log("Warning: No broadcast interfaces found! LAN lobby broadcasting will not function. " +
                     "Please ensure that your network adapters are enabled and have valid IPv4 addresses.");
-                return;
             }
+
+            return discoveredInterfaces;
         }
 
         /// <summary>
@@ -313,8 +323,23 @@ namespace DTAClient.DXGUI.Multiplayer
                         // Check if socket is still valid
                         if (socket == null || !socket.IsBound)
                             break;
+                    }
 
-                        RefreshBroadcastInterfaces();
+                    // Discover new interfaces outside the lock to minimize lock time
+                    var newInterfaces = DiscoverBroadcastInterfaces(lobbyPort);
+
+                    lock (socketLock)
+                    {
+                        // Check again after discovery in case state changed
+                        if (stopRefresher || socket == null || !socket.IsBound)
+                            break;
+
+                        // Atomically replace the old interfaces with new ones
+                        broadcastInterfaces.Clear();
+                        foreach (var (key, netIf) in newInterfaces)
+                        {
+                            broadcastInterfaces[key] = netIf;
+                        }
                     }
                 }
             }
@@ -326,17 +351,6 @@ namespace DTAClient.DXGUI.Multiplayer
             {
                 Logger.Log("Network interface refresh thread: exception: " + ex.ToString());
             }
-        }
-
-        /// <summary>
-        /// Refreshes the broadcast interfaces by re-scanning network interfaces.
-        /// This method clears the current interfaces and re-adds only "up" interfaces.
-        /// </summary>
-        private void RefreshBroadcastInterfaces()
-        {
-            Logger.Log("Refreshing broadcast interfaces.");
-            broadcastInterfaces.Clear();
-            AddBroadcastInterfaces();
         }
 
         /// <summary>
