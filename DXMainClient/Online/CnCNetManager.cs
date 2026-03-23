@@ -344,7 +344,9 @@ namespace DTAClient.Online
 
                 // Replace Funky's game identifiers with real game names
                 for (int i = 0; i < gameCollection.GameList.Count; i++)
-                    // TODO localize this or not?
+                    // No localization needed: this message comes from the external Funky IRC bot which
+                    // always broadcasts in English. Only the short game identifier is replaced with
+                    // the full game name; the surrounding "new ... game" text is fixed by the bot.
                     message = message.Replace("new " + gameCollection.GetGameIdentifierFromIndex(i) + " game",
                         "new " + gameCollection.GetFullGameNameFromIndex(i) + " game");
 
