@@ -429,6 +429,7 @@ namespace DTAClient.Domain.Multiplayer
                 }
             })).ToArray();
 
+            Logger.Log("MapLoader: Waiting for the multiplayer map loading task to complete. Total: " + tasks.Length);
             await Task.WhenAll(tasks);
 
             return tasks.Select(t => t.Result).Where(m => m != null).ToList();
@@ -511,6 +512,7 @@ namespace DTAClient.Domain.Multiplayer
                         customMapCache.Items[normalizedPath] = new CustomMapCache.Item(map);
                 })).ToArray();
 
+                Logger.Log("MapLoader: Waiting for the custom map loading task to complete. Total: " + tasks.Length);
                 await Task.WhenAll(tasks);
 
                 localMapPaths = localMapPathsConcurrentBag.ToList();
