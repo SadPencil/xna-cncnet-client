@@ -429,8 +429,15 @@ namespace DTAClient.Domain.Multiplayer
                 }
             })).ToArray();
 
-            Logger.Log("MapLoader: Waiting for the multiplayer map loading task to complete. Total: " + tasks.Length);
-            await Task.WhenAll(tasks);
+            Task waitMultiMapsTask = Task.WhenAll(tasks);
+            while (await Task.WhenAny(waitMultiMapsTask, Task.Delay(1000)) != waitMultiMapsTask)
+            {
+                string message = "MapLoader: Waiting for the multiplayer map loading task to complete. Remaining files: " + tasks.Count(t => !t.IsCompleted) + ". Total: " + tasks.Length;
+                Debug.WriteLine(message);
+                Logger.Log(message);
+            }
+
+            await waitMultiMapsTask;
 
             return tasks.Select(t => t.Result).Where(m => m != null).ToList();
         }
@@ -512,8 +519,15 @@ namespace DTAClient.Domain.Multiplayer
                         customMapCache.Items[normalizedPath] = new CustomMapCache.Item(map);
                 })).ToArray();
 
-                Logger.Log("MapLoader: Waiting for the custom map loading task to complete. Total: " + tasks.Length);
-                await Task.WhenAll(tasks);
+                Task waitCustomMapsTask = Task.WhenAll(tasks);
+                while (await Task.WhenAny(waitCustomMapsTask, Task.Delay(1000)) != waitCustomMapsTask)
+                {
+                    string message = "MapLoader: Waiting for the custom map loading task to complete. Remaining files: " + tasks.Count(t => !t.IsCompleted) + ". Total: " + tasks.Length;
+                    Debug.WriteLine(message);
+                    Logger.Log(message);
+                }
+
+                await waitCustomMapsTask;
 
                 localMapPaths = localMapPathsConcurrentBag.ToList();
             }
