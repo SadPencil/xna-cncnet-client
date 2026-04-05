@@ -129,19 +129,8 @@ namespace DTAClient.Domain.Multiplayer
             LoadGameModes(mpMapsIni);
             LoadGameModeAliases(mpMapsIni);
 
-            Task<List<Map>> multiMapsTask = LoadMultiMapsAsync(mpMapsIni);
-            Task<IEnumerable<Map>> customMapsTask = LoadCustomMapsAsync();
-
-            await Task.WhenAll(multiMapsTask, customMapsTask);
-
-            foreach (Map map in await multiMapsTask)
-            {
-                AddMapToGameModes(map, false);
-                _translatedMapNames[map.UntranslatedName] = map.Name;
-            }
-
-            foreach (Map map in await customMapsTask)
-                AddMapToGameModes(map, false);
+            await LoadMultiMapsAsync(mpMapsIni);
+            await LoadCustomMapsAsync();
 
             _gameModes.RemoveAll(g => g.Maps.Count < 1);
             _gameModeMaps = new GameModeMapCollection(_gameModes);
@@ -392,14 +381,14 @@ namespace DTAClient.Domain.Multiplayer
             _gameModeMaps = new GameModeMapCollection(_gameModes);
         }
 
-        private async Task<List<Map>> LoadMultiMapsAsync(IniFile mpMapsIni)
+        private async Task LoadMultiMapsAsync(IniFile mpMapsIni)
         {
             List<string> keys = mpMapsIni.GetSectionKeys(MultiMapsSection);
 
             if (keys == null)
             {
                 Logger.Log("Loading multiplayer map list failed!!!");
-                return [];
+                return;
             }
 
             Task<Map>[] tasks = keys.Select(key => Task.Run(() =>
@@ -439,7 +428,11 @@ namespace DTAClient.Domain.Multiplayer
 
             await waitMultiMapsTask;
 
-            return tasks.Select(t => t.Result).Where(m => m != null).ToList();
+            foreach (Map map in tasks.Select(t => t.Result).Where(m => m != null))
+            {
+                AddMapToGameModes(map, false);
+                _translatedMapNames[map.UntranslatedName] = map.Name;
+            }
         }
 
         private void LoadGameModes(IniFile mpMapsIni)
@@ -473,14 +466,14 @@ namespace DTAClient.Domain.Multiplayer
             }
         }
 
-        private async Task<IEnumerable<Map>> LoadCustomMapsAsync()
+        private async Task LoadCustomMapsAsync()
         {
             DirectoryInfo customMapsDirectory = SafePath.GetDirectory(ProgramConstants.GamePath, CUSTOM_MAPS_DIRECTORY);
 
             if (!customMapsDirectory.Exists)
             {
                 Logger.Log($"Custom maps directory {customMapsDirectory} does not exist!");
-                return [];
+                return;
             }
 
             Logger.Log("MapLoader: Loading custom map cache...");
@@ -554,9 +547,12 @@ namespace DTAClient.Domain.Multiplayer
             await CacheCustomMapsAsync(customMapCache);
             Logger.Log("MapLoader: Finished saving custom map cache.");
 
-            Logger.Log("MapLoader: Finished loading custom maps.");
+            foreach (Map map in customMapCache.Items.Values.Select(item => item.Map))
+            {
+                AddMapToGameModes(map, false);
+            }
 
-            return customMapCache.Items.Values.Select(item => item.Map);
+            Logger.Log("MapLoader: Finished loading custom maps.");
         }
 
         /// <summary>
