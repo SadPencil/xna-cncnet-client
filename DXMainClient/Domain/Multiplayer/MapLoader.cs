@@ -109,7 +109,7 @@ namespace DTAClient.Domain.Multiplayer
         /// <summary>
         /// Loads multiplayer map info asynchronously.
         /// </summary>
-        public Task LoadMapsAsync() => Task.Run(LoadMapsInternalAsync);
+        public Task LoadMapsAsync() => LoadMapsInternalAsync();
 
         /// <summary>
         /// Load maps based on INI info as well as those in the custom maps directory.
@@ -134,13 +134,13 @@ namespace DTAClient.Domain.Multiplayer
 
             await Task.WhenAll(multiMapsTask, customMapsTask);
 
-            foreach (Map map in multiMapsTask.Result)
+            foreach (Map map in await multiMapsTask)
             {
                 AddMapToGameModes(map, false);
                 _translatedMapNames[map.UntranslatedName] = map.Name;
             }
 
-            foreach (Map map in customMapsTask.Result)
+            foreach (Map map in await customMapsTask)
                 AddMapToGameModes(map, false);
 
             _gameModes.RemoveAll(g => g.Maps.Count < 1);
