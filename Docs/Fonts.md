@@ -26,20 +26,46 @@ This lets translations supply their own fonts without touching the base configur
 [TextShaping]
 ; HarfBuzz text shaping. Required for complex scripts (Arabic, Hebrew) and ZWJ emoji.
 ; Disable for simple Latin-only text (English, Spanish, French) for better performance.
+; Default: false
 Enabled=true
-EnableBiDi=true       ; Bidirectional text support (mixed LTR/RTL)
-CacheSize=1000        ; Shaped text cache entries. Use 1000+ for CJK languages.
+; Bidirectional text support (mixed LTR/RTL). Only applies when Enabled=true. Default: true
+EnableBiDi=true
+; Shaped text cache entries. Use 1000+ for CJK languages. Default: 100
+CacheSize=1000
+
+[FontRendering]
+; Optional section. Advanced FontStashSharp rasterization settings.
+; All properties are optional; the defaults shown here are used when the section is absent.
+; Horizontal blur kernel applied to each rasterized glyph. Default: 0 (no blur)
+KernelWidth=0
+; Vertical blur kernel applied to each rasterized glyph. Default: 0 (no blur)
+KernelHeight=0
+; Multiplier for the glyph rasterization size. Values > 1 produce sharper output when the
+; render target is upscaled at the cost of a larger texture atlas. Default: 1
+FontResolutionFactor=1
+; Width of each FontStashSharp atlas page in pixels. Default: 1024
+TextureWidth=1024
+; Height of each FontStashSharp atlas page in pixels. Default: 1024
+TextureHeight=1024
+; How rasterized glyph pixels are produced.
+; Premultiplied  - matches a premultiplied-alpha SpriteBatch (default)
+; NonPremultiplied - matches AlphaBlend SpriteBatch
+; NoAntialiasing - hard 1-bit edges for pixel-art fonts
+GlyphRenderResult=Premultiplied
 
 [Fonts]
 Count=6   ; Total number of font indexes to define
 
 [Font0]
-; Type: "TrueType" or "SpriteFont"
+; Type: "TrueType" or "SpriteFont". Default: SpriteFont
 Type=TrueType
 Path=MozillaText-Bold.ttf   ; Path relative to the directory containing Fonts.ini
-Size=14           ; Font height in pixels (TrueType only; ignored for SpriteFont)
-Fallback=4        ; Optional. Index of the font to try when a character is missing.
-                  ; The fallback font's own Fallback is followed recursively.
+; Font height in pixels (TrueType only; ignored for SpriteFont). Default: 16
+Size=14
+; Optional. Index of the font to try when a character is missing.
+; The fallback font's own Fallback is followed recursively.
+; Omit (or set to a negative value) to disable fallback.
+Fallback=4
 
 [Font1]
 Type=TrueType
@@ -75,12 +101,33 @@ Font paths are relative to the directory containing `Fonts.ini`. Both `/` and `\
 
 ### Properties reference
 
-| Property | Applies to | Description |
-|----------|-----------|-------------|
-| `Type` | Both | `TrueType` or `SpriteFont` |
-| `Path` | Both | File path relative to `Fonts.ini` directory. For SpriteFont, the `.xnb` extension is optional — it is stripped and re-appended automatically. |
-| `Size` | TrueType | Font height in pixels. This is the em-square height passed to FreeType via `FT_Set_Pixel_Sizes`. The actual rendered height of characters may be slightly smaller depending on the font's metrics. |
-| `Fallback` | TrueType | Index of another TrueType font to use when a character is not found. The chain is followed recursively. Circular references are detected and ignored. |
+#### `[TextShaping]` (optional section)
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `Enabled` | `false` | Enable HarfBuzz text shaping. Required for complex scripts (Arabic, Hebrew, Hindi) and ZWJ emoji sequences. Disable for Latin-only text for better performance. |
+| `EnableBiDi` | `true` | Enable bidirectional text support for mixed LTR/RTL text. Only applies when `Enabled=true`. |
+| `CacheSize` | `100` | Number of shaped-text cache entries. Use 1000 or more for CJK or other large-script languages. Must be at least 1. |
+
+#### `[FontRendering]` (optional section)
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `KernelWidth` | `0` | Horizontal blur kernel size applied by FontStashSharp when rasterizing glyphs. Must be non-negative. |
+| `KernelHeight` | `0` | Vertical blur kernel size. Must be non-negative. |
+| `FontResolutionFactor` | `1` | Multiplier for the internal glyph rasterization size. Values above `1` produce sharper output when the render target is upscaled (e.g. high-DPI) at the cost of a larger atlas. Must be non-negative. |
+| `TextureWidth` | `1024` | Width of each FontStashSharp atlas page in pixels. |
+| `TextureHeight` | `1024` | Height of each FontStashSharp atlas page in pixels. |
+| `GlyphRenderResult` | `Premultiplied` | How glyph alpha is encoded: `Premultiplied` (matches a premultiplied-alpha `SpriteBatch`), `NonPremultiplied` (matches `AlphaBlend`), or `NoAntialiasing` (hard 1-bit edges for pixel-art fonts). |
+
+#### `[Font#]` properties
+
+| Property | Default | Applies to | Description |
+|----------|---------|-----------|-------------|
+| `Type` | `SpriteFont` | Both | `TrueType` or `SpriteFont`. |
+| `Path` | *(empty)* | Both | File path relative to the `Fonts.ini` directory. For SpriteFont, the `.xnb` extension is optional — it is stripped and re-appended automatically. |
+| `Size` | `16` | TrueType | Font height in pixels. This is the em-square height passed to FreeType via `FT_Set_Pixel_Sizes`. The actual rendered height of characters may be slightly smaller depending on the font's metrics. Ignored for SpriteFont. |
+| `Fallback` | *(none)* | TrueType | Index of another TrueType font to use when a character is not found. The chain is followed recursively. Circular references are detected and ignored. Omit or set to a negative value to disable fallback. |
 
 ## Character fallback
 
