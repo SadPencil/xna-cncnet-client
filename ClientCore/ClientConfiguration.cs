@@ -33,6 +33,8 @@ namespace ClientCore
         private IniFile DTACnCNetClient_ini;
         private IniFile clientDefinitionsIni;
         private IniFile networkDefinitionsIni;
+        private readonly string[] skillLevelOptions;
+        private readonly int maxSkillLevelIndex;
 
         protected ClientConfiguration()
         {
@@ -65,6 +67,11 @@ namespace ClientCore
             }
 
             RefreshTranslationGameFiles();
+
+            skillLevelOptions = SkillLevelOptions.SplitWithCleanup();
+            maxSkillLevelIndex = Math.Max(0, skillLevelOptions.Length - 1);
+            if (maxSkillLevelIndex == 0)
+                throw new ClientConfigurationException("No skill level options defined in ClientDefinitions.ini.");
         }
 
         /// <summary>
@@ -277,7 +284,7 @@ namespace ClientCore
 
         public string[] TrustedDomains => clientDefinitionsIni.GetStringListValue(SETTINGS, "TrustedDomains", string.Empty);
 
-        public string[] AlwaysTrustedDomains = { "cncnet.org", "gamesurge.net", "dronebl.org", "discord.com", "discord.gg", "youtube.com", "youtu.be" };
+        public string[] AlwaysTrustedDomains = { "cncnet.org", "gamesurge.net", "dronebl.org" };
 
         public bool ShowGameIconInGameList => clientDefinitionsIni.GetBooleanValue(SETTINGS, "ShowGameIconInGameList", true);
 
@@ -394,15 +401,11 @@ namespace ClientCore
 
         public string SkillLevelOptions => clientDefinitionsIni.GetStringValue(SETTINGS, "SkillLevelOptions", "Any,Beginner,Intermediate,Pro");
 
-        public string[] GetSkillLevelOptions() => SkillLevelOptions.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        public string[] GetSkillLevelOptions() => skillLevelOptions;
 
-        public int NormalizeSkillLevel(int skillLevel)
-        {
-            int maxSkillLevelIndex = Math.Max(0, GetSkillLevelOptions().Length - 1);
-            return Math.Clamp(skillLevel, 0, maxSkillLevelIndex);
-        }
+        public int NormalizeSkillLevel(int skillLevel) => Math.Clamp(skillLevel, 0, maxSkillLevelIndex);
 
-        public int DefaultSkillLevelIndex => clientDefinitionsIni.GetIntValue(SETTINGS, "DefaultSkillLevelIndex", 0);
+        public int DefaultSkillLevelIndex => NormalizeSkillLevel(clientDefinitionsIni.GetIntValue(SETTINGS, "DefaultSkillLevelIndex", 0));
 
         public bool CampaignTagSelectorEnabled => clientDefinitionsIni.GetBooleanValue(SETTINGS, "CampaignTagSelectorEnabled", false);
 

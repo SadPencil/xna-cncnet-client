@@ -273,7 +273,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             this.hostName = hostName;
             this.playerLimit = playerLimit;
             this.isCustomPassword = isCustomPassword;
-            this.skillLevel = skillLevel;
+            this.skillLevel = ClientConfiguration.Instance.NormalizeSkillLevel(skillLevel);
             this.gameRoomName = channel.UIName;
             
             hostUploadedMaps.Clear();
@@ -433,7 +433,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             bool gameNameChanged = gameRoomName != newGameRoomName;
             bool maxPlayersChanged = playerLimit != newMaxPlayers;
-            bool skillLevelChanged = skillLevel != newSkillLevel;
+            int normalizedSkillLevel = ClientConfiguration.Instance.NormalizeSkillLevel(newSkillLevel);
+            bool skillLevelChanged = skillLevel != normalizedSkillLevel;
 
             string currentUserPassword = isCustomPassword ? channel.Password : string.Empty;
             bool passwordChanged = currentUserPassword != newPassword;
@@ -451,7 +452,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             gameRoomName = newGameRoomName;
             channel.UIName = newGameRoomName;
             playerLimit = newMaxPlayers;
-            skillLevel = newSkillLevel;
+            skillLevel = normalizedSkillLevel;
 
             if (passwordChanged)
             {
@@ -487,7 +488,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (skillLevelChanged)
             {
-                string[] skillLevelOptions = ClientConfiguration.Instance.SkillLevelOptions.Split(',');
+                string[] skillLevelOptions = ClientConfiguration.Instance.GetSkillLevelOptions();
                 string skillLevelName = skillLevelOptions[skillLevel];
                 string localizedSkillLevel = skillLevelName.L10N($"INI:ClientDefinitions:SkillLevel:{skillLevel}");
                 AddNotice(string.Format("Skill level changed to {0}."
@@ -565,7 +566,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (skillLevelChanged)
             {
-                string[] skillLevelOptions = ClientConfiguration.Instance.SkillLevelOptions.Split(',');
+                string[] skillLevelOptions = ClientConfiguration.Instance.GetSkillLevelOptions();
                 string skillLevelName = skillLevelOptions[skillLevel];
                 string localizedSkillLevel = skillLevelName.L10N($"INI:ClientDefinitions:SkillLevel:{skillLevel}");
                 AddNotice(string.Format("{0} changed skill level to {1}."

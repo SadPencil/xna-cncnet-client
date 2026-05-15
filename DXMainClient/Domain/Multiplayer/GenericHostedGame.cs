@@ -2,8 +2,6 @@ using System;
 
 using ClientCore;
 
-using DTAClient.Domain.Multiplayer.CnCNet;
-
 namespace DTAClient.Domain.Multiplayer
 {
     /// <summary>

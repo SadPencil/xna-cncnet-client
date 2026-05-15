@@ -1,18 +1,20 @@
 ﻿using System;
+using System.Text.RegularExpressions;
+
 using ClientCore;
+using ClientCore.Extensions;
+
 using DiscordRPC;
 using DiscordRPC.Message;
-using Microsoft.Xna.Framework;
+
 using Rampastring.Tools;
-using Rampastring.XNAUI;
-using System.Text.RegularExpressions;
 
 namespace DTAClient.Domain
 {
     /// <summary>
     /// A class for handling Discord integration.
     /// </summary>
-    public class DiscordHandler: IDisposable
+    public class DiscordHandler : IDisposable
     {
         private const int MaxDiscordPresenceTextLength = 128;
         private DiscordRpcClient client;
@@ -261,7 +263,7 @@ namespace DTAClient.Domain
             if (string.IsNullOrEmpty(value) || value.Length <= MaxDiscordPresenceTextLength)
                 return value;
 
-            return value.Substring(0, MaxDiscordPresenceTextLength - 3) + "...";
+            return value.SubstringSurrogateAware(0, MaxDiscordPresenceTextLength - 3) + "...";
         }
 
         #endregion
