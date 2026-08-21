@@ -15,6 +15,7 @@ using ClientGUI.Settings;
 using ClientUpdater;
 
 using DTAClient.Domain;
+using DTAClient.Domain.Singleplayer;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -87,6 +88,8 @@ namespace DTAClient.DXGUI.Campaign
         };
 
         private Mission missionToLaunch;
+
+        private string launchedMissionInternalName;
 
         private List<Mission> _allMissions = [];
         public IReadOnlyCollection<Mission> AllMissions { get => _allMissions; }
@@ -309,6 +312,13 @@ namespace DTAClient.DXGUI.Campaign
                 return;
             }
 
+            if (mission.RequiresUnlocking && !mission.IsUnlocked)
+            {
+                tbMissionDescription.Text = "You have not yet unlocked this mission.";
+                btnLaunch.AllowClick = false;
+                return;
+            }
+
             tbMissionDescription.Text = mission.GUIDescription;
 
             if (!mission.Enabled)
@@ -432,6 +442,8 @@ namespace DTAClient.DXGUI.Campaign
         /// </summary>
         private void LaunchMission(Mission mission)
         {
+            launchedMissionInternalName = mission.InternalName;
+
             CustomMissionHelper.CopySupplementalMissionFiles(mission);
 
             FileInfo spawnerSettingsFile = SafePath.GetFile(ProgramConstants.GamePath, ProgramConstants.SPAWNER_SETTINGS);
@@ -528,6 +540,11 @@ namespace DTAClient.DXGUI.Campaign
                 var mapIni = new IniFile(scenarioPath);
 
                 IniFile.ConsolidateIniFiles(mapIni, difficultyIni);
+
+                // Ensure the mission ends with a score screen so that mission
+                // completion can be detected from the game log.
+                mapIni.SetBooleanValue("Basic", "EndOfGame", true);
+                mapIni.SetBooleanValue("Basic", "SkipScore", false);
 
                 foreach (CampaignCheckBox chkBox in CheckBoxes)
                     chkBox.ApplyMapCode(mapIni, gameMode: null);
@@ -678,14 +695,22 @@ namespace DTAClient.DXGUI.Campaign
                 SaveSettings();
             }
 
+            // Unlock missions if the player completed (won) the singleplayer mission.
+            if (!string.IsNullOrEmpty(launchedMissionInternalName))
+            {
+                CampaignHandler.Instance.PostGameExitOnSingleplayerMission(launchedMissionInternalName);
+                launchedMissionInternalName = null;
+
+                // Refresh the list so newly unlocked missions become playable.
+                LoadMissionsWithFilter(null, disableCustomMissions: true, disableOfficialMissions: false);
+            }
+
         }
 
         private void ReadMissionList()
         {
-            ParseBattleIni("INI/Battle.ini");
-
-            if (AllMissions.Count == 0)
-                ParseBattleIni("INI/" + ClientConfiguration.Instance.BattleFSFileName);
+            foreach (Mission mission in CampaignHandler.Instance.Missions)
+                AddMission(mission);
 
             LoadCustomMissions();
 
@@ -718,50 +743,6 @@ namespace DTAClient.DXGUI.Campaign
                 Mission mission = Mission.NewCustomMission(clientMissionDataSection, missionCodeName: filename, scenario, gameMissionDataSection);
                 AddMission(mission);
             }
-        }
-
-        /// <summary>
-        /// Parses a Battle(E).ini file. Returns true if succesful (file found), otherwise false.
-        /// </summary>
-        /// <param name="path">The path of the file, relative to the game directory.</param>
-        /// <returns>True if succesful, otherwise false.</returns>
-        private bool ParseBattleIni(string path)
-        {
-            Logger.Log("Attempting to parse " + path + " to populate mission list.");
-
-            FileInfo battleIniFileInfo = SafePath.GetFile(ProgramConstants.GamePath, path);
-            if (!battleIniFileInfo.Exists)
-            {
-                Logger.Log("File " + path + " not found. Ignoring.");
-                return false;
-            }
-
-            if (selectedMissions.Count > 0)
-            {
-                throw new InvalidOperationException("Loading multiple Battle*.ini files is not supported anymore.");
-            }
-
-            var battleIni = new IniFile(battleIniFileInfo.FullName);
-
-            List<string> battleKeys = battleIni.GetSectionKeys("Battles");
-
-            if (battleKeys == null)
-                return false; // File exists but [Battles] doesn't
-
-            for (int i = 0; i < battleKeys.Count; i++)
-            {
-                string battleEntry = battleKeys[i];
-                string battleSection = battleIni.GetStringValue("Battles", battleEntry, "NOT FOUND");
-
-                if (!battleIni.SectionExists(battleSection))
-                    continue;
-
-                var mission = new Mission(battleIni.GetSection(battleSection), missionCodeName: battleEntry);
-                AddMission(mission);
-            }
-
-            Logger.Log("Finished parsing " + path + ".");
-            return true;
         }
 
         /// <summary>
@@ -810,7 +791,12 @@ namespace DTAClient.DXGUI.Campaign
             {
                 var item = new XNAListBoxItem();
                 item.Text = mission.GUIName;
-                if (!mission.Enabled)
+                if (mission.RequiresUnlocking && !mission.IsUnlocked)
+                {
+                    item.Text = "Locked Mission";
+                    item.TextColor = UISettings.ActiveSettings.DisabledItemColor;
+                }
+                else if (!mission.Enabled)
                 {
                     item.TextColor = UISettings.ActiveSettings.DisabledItemColor;
                 }

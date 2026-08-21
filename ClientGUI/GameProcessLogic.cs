@@ -77,10 +77,6 @@ namespace ClientGUI
 
             string extraCommandLine = ClientConfiguration.Instance.ExtraExeCommandLineParameters;
 
-            SafePath.DeleteFileIfExists(ProgramConstants.GamePath, "DTA.LOG");
-            SafePath.DeleteFileIfExists(ProgramConstants.GamePath, "TI.LOG");
-            SafePath.DeleteFileIfExists(ProgramConstants.GamePath, "TS.LOG");
-
             GameProcessStarting?.Invoke();
 
             if (UserINISettings.Instance.WindowedMode && UseQres && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

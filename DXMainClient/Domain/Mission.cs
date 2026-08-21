@@ -45,6 +45,11 @@ namespace DTAClient.Domain
             PlayerAlwaysOnNormalDifficulty = missionSection.GetBooleanValue(nameof(PlayerAlwaysOnNormalDifficulty), false);
             Tags = missionSection.GetStringValue(nameof(Tags), string.Empty).SplitWithCleanup();
 
+            InternalName = missionSection.SectionName;
+            RequiresUnlocking = missionSection.GetBooleanValue(nameof(RequiresUnlocking), false);
+            UnlockMissions = missionSection.GetStringValue(nameof(UnlockMissions), string.Empty)
+                .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
             CodeName = missionCodeName;
             CustomMissionID = ComputeCustomMissionID(missionCodeName);
             PreviewImage = missionSection.GetStringValue("PreviewImage", string.Empty);
@@ -76,6 +81,27 @@ namespace DTAClient.Domain
         public string CodeName { get; private set; }
         public int CampaignID { get; } = -1;
         public int CustomMissionID { get; private set; }
+
+        /// <summary>
+        /// The internal name of this mission (the section name in Battle(E).ini).
+        /// Used to resolve mission unlock references.
+        /// </summary>
+        public string InternalName { get; private set; }
+
+        /// <summary>
+        /// Is this a mission that must be unlocked by completing other missions?
+        /// </summary>
+        public bool RequiresUnlocking { get; private set; }
+
+        /// <summary>
+        /// If this mission requires unlocking, has the player unlocked it?
+        /// </summary>
+        public bool IsUnlocked { get; set; }
+
+        /// <summary>
+        /// The internal names of missions that completing this mission unlocks.
+        /// </summary>
+        public string[] UnlockMissions { get; private set; } = Array.Empty<string>();
 
         public int CD { get; private set; }
         public int Side { get; private set; }
