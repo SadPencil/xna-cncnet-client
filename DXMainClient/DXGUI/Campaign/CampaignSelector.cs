@@ -314,7 +314,7 @@ namespace DTAClient.DXGUI.Campaign
 
             if (mission.RequiresUnlocking && !mission.IsUnlocked)
             {
-                tbMissionDescription.Text = "You have not yet unlocked this mission.";
+                tbMissionDescription.Text = "You have not yet unlocked this mission.".L10N("Client:Main:MissionNotUnlocked");
                 btnLaunch.AllowClick = false;
                 return;
             }
@@ -793,7 +793,7 @@ namespace DTAClient.DXGUI.Campaign
                 item.Text = mission.GUIName;
                 if (mission.RequiresUnlocking && !mission.IsUnlocked)
                 {
-                    item.Text = "Locked Mission";
+                    item.Text = "Locked Mission".L10N("Client:Main:LockedMission");
                     item.TextColor = UISettings.ActiveSettings.DisabledItemColor;
                 }
                 else if (!mission.Enabled)

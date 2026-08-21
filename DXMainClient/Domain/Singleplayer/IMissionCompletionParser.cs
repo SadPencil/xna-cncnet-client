@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace DTAClient.Domain.Singleplayer
 {
     /// <summary>

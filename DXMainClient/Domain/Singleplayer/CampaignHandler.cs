@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,7 +19,7 @@ namespace DTAClient.Domain.Singleplayer
         private const string UNLOCK_FILE = "Client/spscore.dat";
         private const string MISSIONS_SECTION = "Missions";
 
-        private static CampaignHandler _instance;
+        private static CampaignHandler? _instance;
 
         private CampaignHandler()
         {
@@ -31,10 +33,14 @@ namespace DTAClient.Domain.Singleplayer
         {
             get
             {
-                if (_instance == null)
-                    _instance = new CampaignHandler();
+                CampaignHandler? instance = _instance;
+                if (instance == null)
+                {
+                    instance = new CampaignHandler();
+                    _instance = instance;
+                }
 
-                return _instance;
+                return instance;
             }
         }
 
@@ -96,7 +102,7 @@ namespace DTAClient.Domain.Singleplayer
                 return;
             }
 
-            Mission mission = Missions.Find(m => m.InternalName == missionInternalName);
+            Mission? mission = Missions.Find(m => m.InternalName == missionInternalName);
             if (mission == null)
             {
                 Logger.Log("CampaignHandler: failed to unlock missions; could not find mission " + missionInternalName);
@@ -105,7 +111,7 @@ namespace DTAClient.Domain.Singleplayer
 
             foreach (string unlockMissionName in mission.UnlockMissions)
             {
-                Mission otherMission = Missions.Find(m => m.InternalName == unlockMissionName);
+                Mission? otherMission = Missions.Find(m => m.InternalName == unlockMissionName);
                 if (otherMission == null)
                 {
                     Logger.Log("CampaignHandler: failed to unlock mission " + unlockMissionName + " because it was not found!");
@@ -138,7 +144,7 @@ namespace DTAClient.Domain.Singleplayer
                 if (kvp.Value != "1")
                     continue;
 
-                Mission mission = Missions.Find(m => m.InternalName == kvp.Key);
+                Mission? mission = Missions.Find(m => m.InternalName == kvp.Key);
                 if (mission != null && mission.RequiresUnlocking)
                     mission.IsUnlocked = true;
             }

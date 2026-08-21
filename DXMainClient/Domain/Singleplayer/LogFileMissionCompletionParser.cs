@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.IO;
 using System.Linq;
@@ -18,7 +20,7 @@ namespace DTAClient.Domain.Singleplayer
 
         public bool? Parse()
         {
-            string logFileName = GetLogFilePath();
+            string? logFileName = GetLogFilePath();
             if (string.IsNullOrWhiteSpace(logFileName))
                 return null;
 
@@ -48,7 +50,7 @@ namespace DTAClient.Domain.Singleplayer
             return false;
         }
 
-        private static string GetLogFilePath()
+        private static string? GetLogFilePath()
         {
             string logFileName = ClientConfiguration.Instance.StatisticsLogFileName;
 
@@ -58,7 +60,7 @@ namespace DTAClient.Domain.Singleplayer
                 string debugDirectory = ProgramConstants.GamePath + "Debug";
                 if (Directory.Exists(debugDirectory))
                 {
-                    string newestDebugLog = Directory.GetFiles(debugDirectory, "DEBUG_*")
+                    string? newestDebugLog = Directory.GetFiles(debugDirectory, "DEBUG_*")
                         .OrderByDescending(File.GetLastWriteTime)
                         .FirstOrDefault();
 
