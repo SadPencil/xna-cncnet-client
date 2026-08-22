@@ -704,6 +704,7 @@ namespace DTAClient.DXGUI.Campaign
 
                 // Refresh the list so newly unlocked missions become playable.
                 // TODO: whether include custom missions or not? Why disabling it?
+                // TODO: This logic might has a conflict with CampaignTagSelector. Try not refreshing the list and just update the mission's status in the list instead. Alternatively, find a way to remember the mission filter.
                 LoadMissionsWithFilter(null, disableCustomMissions: true, disableOfficialMissions: false);
             }
 
