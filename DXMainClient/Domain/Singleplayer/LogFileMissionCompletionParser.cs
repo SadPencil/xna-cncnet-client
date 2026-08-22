@@ -54,6 +54,7 @@ namespace DTAClient.Domain.Singleplayer
         {
             string logFileName = ClientConfiguration.Instance.StatisticsLogFileName;
 
+            // TODO: this is a hardcoded behavior. Try to find a general configurable way.
             if (File.Exists(ProgramConstants.GamePath + "LaunchVinifera.exe") ||
                 File.Exists(ProgramConstants.GamePath + "LaunchVinifera.dat"))
             {
