@@ -543,8 +543,9 @@ namespace DTAClient.DXGUI.Campaign
 
                 // Ensure the mission ends with a score screen so that mission
                 // completion can be detected from the game log.
-                mapIni.SetBooleanValue("Basic", "EndOfGame", true);
-                mapIni.SetBooleanValue("Basic", "SkipScore", false);
+                // TODO: Do we really want to force this? Commented out for now.
+                // mapIni.SetBooleanValue("Basic", "EndOfGame", true);
+                // mapIni.SetBooleanValue("Basic", "SkipScore", false);
 
                 foreach (CampaignCheckBox chkBox in CheckBoxes)
                     chkBox.ApplyMapCode(mapIni, gameMode: null);
@@ -702,6 +703,7 @@ namespace DTAClient.DXGUI.Campaign
                 launchedMissionInternalName = null;
 
                 // Refresh the list so newly unlocked missions become playable.
+                // TODO: whether include custom missions or not? Why disabling it?
                 LoadMissionsWithFilter(null, disableCustomMissions: true, disableOfficialMissions: false);
             }
 
