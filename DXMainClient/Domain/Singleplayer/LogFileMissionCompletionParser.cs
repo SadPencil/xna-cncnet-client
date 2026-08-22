@@ -54,23 +54,25 @@ namespace DTAClient.Domain.Singleplayer
         {
             string logFileName = ClientConfiguration.Instance.StatisticsLogFileName;
 
-            // TODO: this is a hardcoded behavior. Try to find a general configurable way.
-            if (File.Exists(ProgramConstants.GamePath + "LaunchVinifera.exe") ||
-                File.Exists(ProgramConstants.GamePath + "LaunchVinifera.dat"))
+            if (ClientConfiguration.Instance.ClientGameType == ClientType.TS)
             {
-                string debugDirectory = ProgramConstants.GamePath + "Debug";
-                if (Directory.Exists(debugDirectory))
+                if (File.Exists(ProgramConstants.GamePath + "LaunchVinifera.exe") ||
+                    File.Exists(ProgramConstants.GamePath + "LaunchVinifera.dat"))
                 {
-                    string? newestDebugLog = Directory.GetFiles(debugDirectory, "DEBUG_*")
-                        .OrderByDescending(File.GetLastWriteTime)
-                        .FirstOrDefault();
+                    string debugDirectory = ProgramConstants.GamePath + "Debug";
+                    if (Directory.Exists(debugDirectory))
+                    {
+                        string? newestDebugLog = Directory.GetFiles(debugDirectory, "DEBUG_*")
+                            .OrderByDescending(File.GetLastWriteTime)
+                            .FirstOrDefault();
 
-                    if (newestDebugLog != null)
-                        return "Debug/" + Path.GetFileName(newestDebugLog);
+                        if (newestDebugLog != null)
+                            return "Debug/" + Path.GetFileName(newestDebugLog);
+                    }
                 }
-            }
 
-            return logFileName;
+                return logFileName;
+            }
         }
     }
 }
